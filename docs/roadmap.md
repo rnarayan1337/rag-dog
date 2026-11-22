@@ -10,7 +10,7 @@ Status: ⬜ not started · 🟨 in progress · ✅ done · 🅿️ parked
 | # | Item | What it delivers | Status |
 |---|------|------------------|--------|
 | 000 | Setup | Repo, SSH + signed commits, uv project, `.env` | ✅ |
-| 001 | Ingestion | Upload → hash/dedup → read pages → chunk → store in ChromaDB | ⬜ |
+| 001 | Ingestion | Upload → hash/dedup → read pages → chunk → store in ChromaDB | 🟨 |
 | 002 | Retrieval | Embed the question, return top-k chunks; check them by eye | ⬜ |
 | 003 | Generation | Prompt + chunks → Claude → cited answer | ⬜ |
 | 004 | Upload UI | Streamlit page to upload files and chat | ⬜ |

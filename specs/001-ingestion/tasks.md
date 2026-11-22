@@ -4,13 +4,13 @@ Tick each task when done. Keep this file current in the same PR as the code.
 
 ## Setup
 
-- [ ] T1 Create branch `feature/001-ingestion`
-- [ ] T2 Add pytest: `uv add --dev pytest`
-- [ ] T3 Create `ragdog/core/config.py` with the settings from `plan.md`
+- [x] T1 Create branch `feature/001-ingestion`
+- [x] T2 Add pytest: `uv add --dev pytest`
+- [x] T3 Create `ragdog/core/config.py` with the settings from `plan.md`
 
 ## Functions
 
-- [ ] T4 `hash_file` + test (same bytes → same hash; streams in blocks)
+- [x] T4 `hash_file` + test (same bytes → same hash; streams in blocks)
 - [ ] T5 `get_collection` (persistent, cosine)
 - [ ] T6 `already_ingested` + test
 - [ ] T7 `read_document` for `.txt` / `.md` + test
