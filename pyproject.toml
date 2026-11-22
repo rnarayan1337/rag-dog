@@ -1,0 +1,23 @@
+[project]
+name = "rag-dog"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "rnarayan1337", email = "rj.narayan@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=2.12.0",
+    "chromadb>=1.5.9",
+    "pypdf>=7.1.1",
+    "python-dotenv>=1.2.4",
+    "streamlit>=1.67.0",
+]
+
+[project.scripts]
+rag-dog = "rag_dog:main"
+
+[build-system]
+requires = ["uv_build>=0.13.9,<0.14.0"]
+build-backend = "uv_build"
