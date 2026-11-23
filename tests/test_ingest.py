@@ -6,13 +6,15 @@ from pathlib import Path
 import pytest
 from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
 
-from ragdog.core.config import COLLECTION, EMBEDDING_MODEL
+from ragdog.core.config import CHUNK_OVERLAP, CHUNK_SIZE, COLLECTION, EMBEDDING_MODEL
 from ragdog.core.ingest import (
     HASH_BLOCK_SIZE,
     already_ingested,
+    chunk_pages,
     get_collection,
     hash_file,
     read_document,
+    split_text,
 )
 
 
@@ -89,3 +91,58 @@ def test_read_document_pdf_keeps_page_numbers() -> None:
     assert "Retrieval finds the chunks." in pages[1][1]  # "ﬁ" ligature normalised
     assert "Generation writes the answer." in pages[1][1]
     assert "Citations name the page." in pages[2][1]
+
+
+def make_text(paragraphs: int, sentences: int) -> str:
+    """Numbered sentences grouped into paragraphs, so every word is traceable."""
+    return "\n\n".join(
+        " ".join(f"Paragraph {p} sentence {s} is about bulldogs." for s in range(sentences))
+        for p in range(paragraphs)
+    )
+
+
+def test_split_text_loses_nothing() -> None:
+    text = make_text(paragraphs=5, sentences=30)  # paragraphs longer than CHUNK_SIZE
+    pieces = split_text(text, CHUNK_SIZE)
+    assert "".join(pieces) == text
+    assert all(len(piece) <= CHUNK_SIZE for piece in pieces)
+
+
+def test_split_text_hard_cuts_text_with_no_spaces() -> None:
+    pieces = split_text("a" * 2000, 800)
+    assert [len(piece) for piece in pieces] == [800, 800, 400]
+
+
+def test_chunk_pages_short_page_is_one_chunk() -> None:
+    assert chunk_pages([(1, "Just one line.")]) == [(1, 0, "Just one line.")]
+
+
+def test_chunk_pages_skips_empty_pages() -> None:
+    assert chunk_pages([(1, ""), (2, "   \n\n "), (3, "Hi.")]) == [(3, 0, "Hi.")]
+
+
+def test_chunk_pages_size_limit_and_overlap() -> None:
+    text = make_text(paragraphs=8, sentences=12)
+    chunks = [chunk for _, _, chunk in chunk_pages([(1, text)])]
+    assert len(chunks) > 3
+    assert all(len(chunk) <= CHUNK_SIZE for chunk in chunks)
+    for previous, current in zip(chunks, chunks[1:]):
+        shared = current[:50]
+        assert shared in previous[-CHUNK_OVERLAP:]  # next chunk starts with prev's tail
+
+
+def test_chunk_pages_keeps_every_sentence() -> None:
+    text = make_text(paragraphs=8, sentences=12)
+    joined = " ".join(chunk for _, _, chunk in chunk_pages([(1, text)]))
+    for p in range(8):
+        for s in range(12):
+            assert f"Paragraph {p} sentence {s} is about bulldogs." in joined
+
+
+def test_chunk_pages_page_numbers_and_global_index() -> None:
+    long_page = make_text(paragraphs=4, sentences=12)
+    chunks = chunk_pages([(1, long_page), (2, "Short page two."), (3, long_page)])
+    assert [index for _, index, _ in chunks] == list(range(len(chunks)))
+    assert [text for page, _, text in chunks if page == 2] == ["Short page two."]
+    pages = [page for page, _, _ in chunks]
+    assert pages == sorted(pages) and set(pages) == {1, 2, 3}

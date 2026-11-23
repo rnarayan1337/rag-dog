@@ -26,7 +26,10 @@ ingest_file(path)
 | `read_document` | `(path: str) -> list[tuple[int, str]]` | Checks the extension (`ValueError` if unsupported), then calls the reader for that type; all return `(page, text)` |
 | `read_text` | `(path: str) -> list[tuple[int, str]]` | `.txt` / `.md`: UTF-8 (bad bytes replaced), one page `1` |
 | `read_pdf` | `(path: str) -> list[tuple[int, str]]` | One pair per page, numbered from 1; text NFKC-normalised (ligatures like `ﬁ` → `fi`) |
-| `chunk_pages` | `(pages) -> list[tuple[int, int, str]]` | Returns `(page, chunk_index, text)`; recursive split per page |
+| `split_text` | `(text, size, separators=SEPARATORS) -> list[str]` | Recursive split; separators stay attached so `"".join(pieces) == text`; hard cut if no separator left |
+| `overlap_tail` | `(chunk, overlap) -> str` | Last `overlap` chars, trimmed to start at a word |
+| `pack_pieces` | `(pieces, size, overlap) -> list[str]` | Packs pieces up to `size`; each new chunk starts with the previous tail; drops blank chunks |
+| `chunk_pages` | `(pages, size=CHUNK_SIZE, overlap=CHUNK_OVERLAP) -> list[tuple[int, int, str]]` | Returns `(page, chunk_index, text)`; split + pack per page |
 | `upsert_chunks` | `(chunks, doc_hash: str, path: str) -> int` | Builds ids + metadata; returns count stored |
 | `ingest_file` | `(path: str) -> int` | Orchestrator; `0` if duplicate |
 

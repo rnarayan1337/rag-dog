@@ -9,9 +9,16 @@ from chromadb.api.models.Collection import Collection
 from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
 from pypdf import PdfReader
 
-from ragdog.core.config import COLLECTION, DB_DIR, SUPPORTED_EXTENSIONS
+from ragdog.core.config import (
+    CHUNK_OVERLAP,
+    CHUNK_SIZE,
+    COLLECTION,
+    DB_DIR,
+    SUPPORTED_EXTENSIONS,
+)
 
 HASH_BLOCK_SIZE: int = 1024 * 1024  # 1 MB
+SEPARATORS: tuple[str, ...] = ("\n\n", ". ", " ")  # paragraph → sentence → word
 
 
 def hash_file(path: str) -> str:
@@ -64,3 +71,64 @@ def read_document(path: str) -> list[tuple[int, str]]:
     if ext == ".pdf":
         return read_pdf(path)
     return read_text(path)
+
+
+def split_text(text: str, size: int, separators: tuple[str, ...] = SEPARATORS) -> list[str]:
+    """Split text into pieces of at most `size` chars, trying separators in order.
+
+    Separators stay attached to the end of each piece, so "".join(pieces) == text.
+    """
+    if len(text) <= size:
+        return [text]
+    if not separators:  # no natural boundary left: cut at exactly `size`
+        return [text[i : i + size] for i in range(0, len(text), size)]
+    sep, finer = separators[0], separators[1:]
+    parts = text.split(sep)
+    parts = [part + sep for part in parts[:-1]] + [parts[-1]]
+    pieces: list[str] = []
+    for part in parts:
+        pieces.extend(split_text(part, size, finer))
+    return pieces
+
+
+def overlap_tail(chunk: str, overlap: int) -> str:
+    """Return the last `overlap` chars of a chunk, starting at a word boundary."""
+    if overlap <= 0:
+        return ""
+    tail = chunk[-overlap:]
+    if " " in tail and len(chunk) > overlap:  # drop the cut-off word at the front
+        tail = tail[tail.index(" ") + 1 :]
+    return tail
+
+
+def pack_pieces(pieces: list[str], size: int, overlap: int) -> list[str]:
+    """Join pieces into chunks of at most `size` chars; each new chunk starts with
+    the tail of the previous one."""
+    chunks: list[str] = []
+    current = ""
+    for piece in pieces:
+        if current and len(current) + len(piece) > size:
+            chunks.append(current)
+            room = size - len(piece)
+            tail = overlap_tail(current, min(overlap, room))
+            current = tail
+        current += piece
+    if current:
+        chunks.append(current)
+    return [chunk for chunk in chunks if chunk.strip()]
+
+
+def chunk_pages(
+    pages: list[tuple[int, str]],
+    size: int = CHUNK_SIZE,
+    overlap: int = CHUNK_OVERLAP,
+) -> list[tuple[int, int, str]]:
+    """Chunk each page separately; return (page, chunk_index, text).
+
+    chunk_index counts across the whole document, not per page.
+    """
+    chunks: list[tuple[int, int, str]] = []
+    for page, text in pages:
+        for chunk in pack_pieces(split_text(text, size), size, overlap):
+            chunks.append((page, len(chunks), chunk))
+    return chunks
