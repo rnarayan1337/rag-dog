@@ -10,7 +10,7 @@ Status: ⬜ not started · 🟨 in progress · ✅ done · 🅿️ parked
 | # | Item | What it delivers | Status |
 |---|------|------------------|--------|
 | 000 | Setup | Repo, SSH + signed commits, uv project, `.env` | ✅ |
-| 001 | Ingestion | Upload → hash/dedup → read pages → chunk → store in ChromaDB | ⬜ |
+| 001 | Ingestion | Upload → hash/dedup → read pages → chunk → store in ChromaDB | ✅ |
 | 002 | Retrieval | Embed the question, return top-k chunks; check them by eye | ⬜ |
 | 003 | Generation | Prompt + chunks → Claude → cited answer | ⬜ |
 | 004 | Upload UI | Streamlit page to upload files and chat | ⬜ |
@@ -27,10 +27,11 @@ Status: ⬜ not started · 🟨 in progress · ✅ done · 🅿️ parked
 | 008 | Re-ranking | Cross-encoder re-ranker; fusion (RRF) — needs a deeper discussion first | 🅿️ |
 | 009 | API | FastAPI wrapper around `core/` (`POST /documents`, `POST /ask`) | 🅿️ |
 | 010 | Re-embedding | Blue/green migration to a new embedding model | 🅿️ |
+| 011 | Pluggable LLM | Provider chosen by config (Claude, Ollama, OpenAI…) via LiteLLM or the OpenAI-compatible SDK, behind `generate_answer` | 🅿️ |
 
 ## Ideas (not committed)
 
-- Pluggable LLM provider (Claude ↔ Ollama via config)
+- API key field in the UI sidebar (session only, never saved) — only if hosted for others
 - Cross-page chunking with a page-offset map
 - Replace old chunks when a document with the same filename is re-uploaded
 - Hybrid search (keyword + vector)
