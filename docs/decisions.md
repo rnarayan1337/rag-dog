@@ -126,3 +126,20 @@ Add a new entry whenever a decision is made or changed — in the same PR as the
 - **Trade-off:** NFKC also changes some characters on purpose (e.g. `²` → `2`, full-width
   letters → normal). Files in other encodings lose their non-ASCII characters.
 - **Revisit when:** Non-English documents matter (detect the encoding instead of assuming UTF-8).
+
+## 014 — Retrieval: top-k with distances, no cutoff in v1
+*2026-11-22*
+
+- **Decision:** `retrieve()` returns the `TOP_K = 5` closest chunks as frozen `RetrievedChunk`
+  dataclasses (text, filename, page, chunk_index, doc_hash, cosine distance), closest first,
+  optionally filtered to one `doc_hash`. There is no minimum-similarity cutoff: the top k
+  always come back.
+- **Why:** 5 × ~800-char chunks is about 1,000 tokens of context, which is enough for most
+  answers without much noise. Returning the distance keeps the evidence needed for a cutoff
+  later. A dataclass gives 003 named, typed fields instead of dict keys.
+- **Trade-off:** A question the documents can't answer still gets 5 chunks. Spotting a weak
+  match is left to the LLM in 003, until roadmap 007.
+- **Measured (2026-11-22):** On the 4-page handbook, the right page scored 0.27–0.63 and wrong
+  pages 0.56–1.01. The ranges overlap, so one small document can't set a cutoff.
+- **Revisit when:** 006's golden set shows recall@5 misses (try a larger k, or re-ranking in
+  008), or 007 adds a weak-match check (use the recorded distances to choose a threshold).

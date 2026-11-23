@@ -64,7 +64,7 @@ retrieval opens the collection only through `get_collection()` ✅.
 
 ## Close out
 
-- [ ] T11 Add decision 014 (retrieval: top-k = 5, distances returned, no cutoff in v1)
+- [x] T11 Add decision 014 (retrieval: top-k = 5, distances returned, no cutoff in v1)
       to `docs/decisions.md`
 - [ ] T12 Mark 002 ✅ in `docs/roadmap.md`; add `scripts/` to the AGENTS.md layout
 - [ ] T13 Open PR, review, merge
