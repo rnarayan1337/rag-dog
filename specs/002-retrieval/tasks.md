@@ -11,7 +11,7 @@ Tick each task when done. Keep this file current in the same PR as the code.
 ## Functions
 
 - [x] T4 `RetrievedChunk` dataclass
-- [ ] T5 `to_chunks` (unpack Chroma's nested query result) + test
+- [x] T5 `to_chunks` (unpack Chroma's nested query result) + test
 - [ ] T6 `retrieve` + tests (shape, order, `k`, empty collection, blank question)
 - [ ] T7 `doc_hash` filter + test
 
