@@ -1,6 +1,6 @@
 # 001 — Ingestion: Spec
 
-**Status:** Draft · **Roadmap:** 001 · **Decisions:** 002–006, 008
+**Status:** Done · **Roadmap:** 001 · **Decisions:** 002–006, 008
 
 ## Goal
 

@@ -45,5 +45,5 @@ chunks 126–181 tokens ✅; code-heavy text can reach ~340 tokens at 800 chars 
 ## Close out
 
 - [x] T15 Update `docs/decisions.md` if anything changed
-- [ ] T16 Mark 001 ✅ in `docs/roadmap.md`
+- [x] T16 Mark 001 ✅ in `docs/roadmap.md`
 - [ ] T17 Open PR, review, merge
