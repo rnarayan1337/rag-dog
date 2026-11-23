@@ -4,8 +4,8 @@ Instructions for AI coding agents (and humans) working in this repo.
 
 ## Project
 
-**rag-dog** — a RAG demo. Users upload documents and ask questions; Claude answers from the
-retrieved chunks, with citations.
+**rag-dog** — a RAG demo. Users upload documents and ask questions; an LLM (Claude in v1)
+answers from the retrieved chunks, with citations.
 
 - What we're building and when: `docs/roadmap.md`
 - Why things are the way they are: `docs/decisions.md`
@@ -29,15 +29,6 @@ uv run pytest                    # run tests
 uv run streamlit run app.py      # run the UI
 ```
 
-The `Makefile` wraps these. Run `make` to list the targets:
-
-```bash
-make install                     # uv sync
-make test                        # uv run pytest
-make run                         # uv run streamlit run app.py
-make clean                       # remove __pycache__ and .pytest_cache (keeps .ragdog_db)
-```
-
 ## Layout
 
 ```
@@ -57,8 +48,13 @@ assets/          # logo, banner, favicon
 4. Documents and queries must be embedded with the **same** model.
    Store `embedding_model` in every chunk's metadata.
 5. No LangChain / LlamaIndex in v1 (see decision 001).
-6. v1 is the happy path. Parked items (eval, guardrails, re-ranking, API, re-embedding)
-   live in `docs/roadmap.md` — don't build them early.
+6. v1 is the happy path. Parked items (eval, guardrails, re-ranking, API, re-embedding,
+   pluggable LLM) live in `docs/roadmap.md` — don't build them early.
+7. Every LLM call goes through one function, `generate_answer` in `ragdog/core/`.
+   No other module imports a provider SDK (e.g. `anthropic`) directly, so swapping
+   providers changes one place.
+8. API keys come from environment variables (`.env` locally, `-e` in Docker).
+   Never hard-code them or save them to disk.
 
 ## Keeping docs current
 

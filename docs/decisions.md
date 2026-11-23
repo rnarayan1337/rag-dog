@@ -82,3 +82,25 @@ Add a new entry whenever a decision is made or changed — in the same PR as the
 
 - **Decision:** `uv` for environment and dependencies; signed commits required on `main`.
 - **Why:** Fast, single tool with a lockfile; signed commits prove authorship.
+
+## 011 — LLM: Claude for v1, behind one function
+*2026-11-22*
+
+- **Decision:** Use Claude via the Anthropic SDK for v1. All LLM calls go through a single
+  `generate_answer` function in `ragdog/core/`.
+- **Why:** The key is ready and the SDK is installed — fastest path to a working v1. One
+  function keeps the provider swappable.
+- **Trade-off:** Users need an Anthropic API key for now.
+- **Considered:** LiteLLM (one interface for many providers, but an extra dependency that can
+  lag provider SDKs); OpenAI SDK pointed at OpenAI-compatible endpoints (Ollama, Groq, etc.;
+  may miss provider-specific features).
+- **Revisit when:** After v1 — see roadmap 011 (pluggable LLM).
+
+## 012 — API key handling
+*2026-11-22*
+
+- **Decision:** The key comes from an environment variable: `.env` when running locally,
+  `-e ANTHROPIC_API_KEY=...` for Docker.
+- **Why:** Simple and keeps keys out of code and the image.
+- **Considered:** A key field in the UI — friendlier for a demo, but if hosted for others their
+  keys would pass through our server. Listed as an idea in the roadmap.
