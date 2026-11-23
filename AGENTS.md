@@ -44,6 +44,7 @@ make clean                       # remove __pycache__ and .pytest_cache (keeps .
 ragdog/core/     # ingestion, retrieval, generation — pure Python, no UI or HTTP
 app.py           # Streamlit UI (calls ragdog.core directly)
 tests/           # pytest tests
+scripts/         # dev tools (e.g. check_retrieval.py); not part of ragdog/core
 docs/            # roadmap.md, decisions.md
 specs/           # one folder per roadmap item
 assets/          # logo, banner, favicon
