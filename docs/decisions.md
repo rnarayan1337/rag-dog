@@ -20,6 +20,9 @@ Add a new entry whenever a decision is made or changed — in the same PR as the
 - **Why:** Open source, runs in-process, no account or server. Persistent mode keeps embeddings across restarts.
 - **Trade-off:** Not built for large-scale production (vs. Pinecone, pgvector, etc.).
 - **Note:** Distance metric is fixed when the collection is created.
+- **Note (2026-11-22):** In Chroma 1.x, cosine is set with
+  `configuration={"hnsw": {"space": "cosine"}}`. Reopening an existing collection ignores a
+  different value.
 - **Revisit when:** Multi-user or millions of chunks.
 
 ## 003 — Embedding model: all-MiniLM-L6-v2
@@ -29,6 +32,12 @@ Add a new entry whenever a decision is made or changed — in the same PR as the
 - **Why:** Free, local, private, fast, no API key.
 - **Trade-off:** Moderate quality, English-centric, ~256-token input limit (longer text is silently truncated).
 - **Rule:** The same model must embed both documents and queries.
+- **Implementation (2026-11-22):** The embedding function is set explicitly
+  (`ONNXMiniLM_L6_V2`) instead of relying on Chroma's default, so a Chroma upgrade can't
+  silently switch models.
+- **Measured (2026-11-22):** Prose chunks of 560–750 chars are 126–181 tokens. Code-heavy text
+  (model numbers, error codes, emails) can reach ~340 tokens at 800 chars, so its tail is
+  truncated.
 - **Revisit when:** The golden set shows retrieval misses. Shortlist from MTEB Retrieval, compare on recall@k.
 - **Migration plan:** Blue/green — re-embed into a new collection, evaluate, switch, drop old.
 
@@ -38,7 +47,9 @@ Add a new entry whenever a decision is made or changed — in the same PR as the
 - **Decision:** Recursive splitting (paragraph → sentence → word), ~800 chars, ~150 overlap, within each page.
 - **Why:** Respects natural boundaries; fits the embedding model's token limit; overlap keeps ideas that straddle a boundary intact; per-page gives page numbers for citations.
 - **Trade-off:** Chunks never cross page boundaries.
-- **Revisit when:** Answers miss context that spans pages (fix: concatenate with a page-offset map).
+- **Revisit when:** Answers miss context that spans pages (fix: concatenate with a page-offset
+  map), or the golden set shows misses on code-heavy documents (fix: lower `CHUNK_SIZE` to
+  ~600).
 
 ## 005 — Chunk ID and metadata schema
 *2026-11-21*
@@ -104,3 +115,14 @@ Add a new entry whenever a decision is made or changed — in the same PR as the
 - **Why:** Simple and keeps keys out of code and the image.
 - **Considered:** A key field in the UI — friendlier for a demo, but if hosted for others their
   keys would pass through our server. Listed as an idea in the roadmap.
+
+## 013 — Text extraction cleanup
+*2026-11-22*
+
+- **Decision:** PDF text is NFKC-normalised (ligatures like `ﬁ` → `fi`). `.txt` / `.md` are
+  read as UTF-8, with undecodable bytes replaced by `�`.
+- **Why:** PDF fonts often produce ligature characters that don't match normal spelling in
+  search or citations. Replacing bad bytes means one stray byte doesn't fail a whole upload.
+- **Trade-off:** NFKC also changes some characters on purpose (e.g. `²` → `2`, full-width
+  letters → normal). Files in other encodings lose their non-ASCII characters.
+- **Revisit when:** Non-English documents matter (detect the encoding instead of assuming UTF-8).
