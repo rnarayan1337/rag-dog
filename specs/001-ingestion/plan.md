@@ -7,8 +7,8 @@
 ## Flow
 
 ```
-ingest_file(path)
-  ├─ collection = get_collection()
+ingest_file(path, collection=None)
+  ├─ if collection is None: collection = get_collection()
   ├─ doc_hash = hash_file(path)
   ├─ if already_ingested(collection, doc_hash): return 0
   ├─ pages  = read_document(path)
@@ -31,7 +31,7 @@ ingest_file(path)
 | `pack_pieces` | `(pieces, size, overlap) -> list[str]` | Packs pieces up to `size`; each new chunk starts with the previous tail; drops blank chunks |
 | `chunk_pages` | `(pages, size=CHUNK_SIZE, overlap=CHUNK_OVERLAP) -> list[tuple[int, int, str]]` | Returns `(page, chunk_index, text)`; split + pack per page |
 | `upsert_chunks` | `(collection, chunks, doc_hash: str, path: str, batch_size=UPSERT_BATCH_SIZE) -> int` | Builds ids + metadata; `upsert` in batches of 500 (re-running replaces, never duplicates); returns count stored |
-| `ingest_file` | `(path: str) -> int` | Orchestrator; `0` if duplicate |
+| `ingest_file` | `(path: str, collection: Collection \| None = None) -> int` | Orchestrator; opens the default collection if none given (tests pass a fake one); `0` if duplicate — also `0` if the file has no text |
 
 ## Settings (`ragdog/core/config.py`)
 

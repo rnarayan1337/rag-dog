@@ -163,3 +163,15 @@ def upsert_chunks(
             ],
         )
     return len(chunks)
+
+
+def ingest_file(path: str, collection: Collection | None = None) -> int:
+    """Hash, read, chunk, and store a file; return chunks stored (0 if already ingested)."""
+    if collection is None:
+        collection = get_collection()
+    doc_hash = hash_file(path)
+    if already_ingested(collection, doc_hash):
+        return 0
+    pages = read_document(path)
+    chunks = chunk_pages(pages)
+    return upsert_chunks(collection, chunks, doc_hash, path)

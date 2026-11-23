@@ -14,6 +14,7 @@ from ragdog.core.ingest import (
     chunk_pages,
     get_collection,
     hash_file,
+    ingest_file,
     read_document,
     split_text,
     upsert_chunks,
@@ -184,4 +185,40 @@ def test_upsert_chunks_in_batches(fake_collection: Collection) -> None:
 
 def test_upsert_chunks_with_nothing_stores_nothing(fake_collection: Collection) -> None:
     assert upsert_chunks(fake_collection, [], "abc", "empty.txt") == 0
+    assert fake_collection.count() == 0
+
+
+def test_ingest_file_twice_stores_once(fake_collection: Collection, tmp_path: Path) -> None:
+    path = tmp_path / "notes.md"
+    path.write_text(make_text(paragraphs=6, sentences=12), encoding="utf-8")
+    first = ingest_file(str(path), fake_collection)
+    assert first > 1
+    assert ingest_file(str(path), fake_collection) == 0
+    assert fake_collection.count() == first
+
+
+def test_ingest_file_renamed_copy_is_a_duplicate(fake_collection: Collection, tmp_path: Path) -> None:
+    original = tmp_path / "notes.txt"
+    original.write_text("Same bytes, different name.", encoding="utf-8")
+    copy = tmp_path / "copy of notes.txt"
+    copy.write_bytes(original.read_bytes())
+    assert ingest_file(str(original), fake_collection) == 1
+    assert ingest_file(str(copy), fake_collection) == 0
+    assert fake_collection.count() == 1
+
+
+def test_ingest_file_pdf_chunks_carry_page_numbers(fake_collection: Collection) -> None:
+    assert ingest_file(str(SAMPLE_PDF), fake_collection) == 3
+    stored = fake_collection.get(include=["documents", "metadatas"])
+    page_of = {doc: meta["page"] for doc, meta in zip(stored["documents"], stored["metadatas"])}
+    assert [page for doc, page in page_of.items() if "Bulldogs" in doc] == [1]
+    assert [page for doc, page in page_of.items() if "Retrieval finds" in doc] == [2]
+    assert [page for doc, page in page_of.items() if "Citations" in doc] == [3]
+
+
+def test_ingest_file_unsupported_type_stores_nothing(fake_collection: Collection, tmp_path: Path) -> None:
+    path = tmp_path / "slides.pptx"
+    path.write_bytes(b"not really slides")
+    with pytest.raises(ValueError, match="Unsupported file type"):
+        ingest_file(str(path), fake_collection)
     assert fake_collection.count() == 0
