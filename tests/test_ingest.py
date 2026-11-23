@@ -3,10 +3,17 @@
 import hashlib
 from pathlib import Path
 
+import pytest
 from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
 
 from ragdog.core.config import COLLECTION, EMBEDDING_MODEL
-from ragdog.core.ingest import HASH_BLOCK_SIZE, already_ingested, get_collection, hash_file
+from ragdog.core.ingest import (
+    HASH_BLOCK_SIZE,
+    already_ingested,
+    get_collection,
+    hash_file,
+    read_document,
+)
 
 
 def test_hash_file_same_bytes_same_hash(tmp_path: Path) -> None:
@@ -55,3 +62,18 @@ def test_already_ingested_true_only_for_stored_hash(tmp_path: Path) -> None:
     )
     assert already_ingested(col, "abc")
     assert not already_ingested(col, "def")
+
+
+@pytest.mark.parametrize("name", ["notes.txt", "README.md", "SHOUTY.TXT"])
+def test_read_document_text_files_are_one_page(tmp_path: Path, name: str) -> None:
+    path = tmp_path / name
+    path.write_text("# Title\n\nFirst paragraph.\n\nSecond — with a dash.", encoding="utf-8")
+    assert read_document(str(path)) == [(1, "# Title\n\nFirst paragraph.\n\nSecond — with a dash.")]
+
+
+@pytest.mark.parametrize("name", ["report.docx", "no_extension"])
+def test_read_document_rejects_unsupported_types(tmp_path: Path, name: str) -> None:
+    path = tmp_path / name
+    path.write_bytes(b"whatever")
+    with pytest.raises(ValueError, match="Unsupported file type"):
+        read_document(str(path))

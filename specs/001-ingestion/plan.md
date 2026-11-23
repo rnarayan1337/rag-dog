@@ -23,7 +23,8 @@ ingest_file(path)
 | `hash_file` | `(path: str) -> str` | SHA-256, read in 1 MB blocks |
 | `get_collection` | `(db_dir: str = DB_DIR) -> Collection` | Persistent client, cosine distance, `ONNXMiniLM_L6_V2` embeddings; `db_dir` lets tests use a temp dir |
 | `already_ingested` | `(collection: Collection, doc_hash: str) -> bool` | `collection.get(where={"doc_hash": h}, limit=1, include=[])`; caller passes the collection so it is opened once |
-| `read_document` | `(path: str) -> list[tuple[int, str]]` | One reader per file type; all return `(page, text)` |
+| `read_document` | `(path: str) -> list[tuple[int, str]]` | Checks the extension (`ValueError` if unsupported), then calls the reader for that type; all return `(page, text)` |
+| `read_text` | `(path: str) -> list[tuple[int, str]]` | `.txt` / `.md`: UTF-8 (bad bytes replaced), one page `1` |
 | `chunk_pages` | `(pages) -> list[tuple[int, int, str]]` | Returns `(page, chunk_index, text)`; recursive split per page |
 | `upsert_chunks` | `(chunks, doc_hash: str, path: str) -> int` | Builds ids + metadata; returns count stored |
 | `ingest_file` | `(path: str) -> int` | Orchestrator; `0` if duplicate |
