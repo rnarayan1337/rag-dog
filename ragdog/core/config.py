@@ -1,5 +1,7 @@
 """Settings for ragdog.core. See the plan.md files under specs/ (001, 002, 003)."""
 
+from typing import Literal
+
 DB_DIR: str = ".ragdog_db"
 COLLECTION: str = "docs"
 
@@ -13,5 +15,6 @@ SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({".pdf", ".md", ".txt"})
 TOP_K: int = 5  # chunks returned per question (~1,000 tokens of context for the LLM)
 
 LLM_MODEL: str = "claude-haiku-5-5"  # cheapest tier; enough for short answers from 5 chunks
-LLM_EFFORT: str = "low"  # how much the model thinks; Haiku 5.5 defaults to "medium"
+# How much the model thinks before answering; Haiku 5.5 defaults to "medium".
+LLM_EFFORT: Literal["low", "medium", "high", "xhigh", "max"] = "low"
 LLM_MAX_TOKENS: int = 16000  # thinking counts toward this, so leave room beyond the answer

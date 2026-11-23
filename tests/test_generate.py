@@ -5,7 +5,14 @@ from typing import Any
 import pytest
 from anthropic.types import Message
 
-from ragdog.core.generate import GenerationError, document_blocks, to_answer
+from ragdog.core.config import LLM_EFFORT, LLM_MAX_TOKENS, LLM_MODEL
+from ragdog.core.generate import (
+    SYSTEM_PROMPT,
+    GenerationError,
+    document_blocks,
+    generate_answer,
+    to_answer,
+)
 from ragdog.core.retrieve import RetrievedChunk
 
 
@@ -53,6 +60,25 @@ def make_response(
             "usage": {"input_tokens": input_tokens, "output_tokens": output_tokens},
         }
     )
+
+
+class FakeMessages:
+    """Stands in for client.messages: records each create() call, returns a canned reply."""
+
+    def __init__(self, response: Message) -> None:
+        self.response = response
+        self.calls: list[dict[str, Any]] = []
+
+    def create(self, **kwargs: Any) -> Message:
+        self.calls.append(kwargs)
+        return self.response
+
+
+class FakeClient:
+    """Stands in for anthropic.Anthropic: no network, no key, no cost."""
+
+    def __init__(self, response: Message) -> None:
+        self.messages = FakeMessages(response)
 
 
 # --- document_blocks ---
@@ -134,3 +160,37 @@ def test_to_answer_rejects_citation_outside_the_chunks_sent() -> None:
     response = make_response([{"type": "text", "text": "Hm", "citations": [cite(5, "x")]}])
     with pytest.raises(GenerationError, match="document 5"):
         to_answer(response, [make_chunk()])
+
+
+# --- generate_answer ---
+
+
+def test_generate_answer_sends_settings_from_config() -> None:
+    client = FakeClient(make_response([{"type": "text", "text": "Ok."}]))
+    generate_answer("What does E2210 mean?", [make_chunk()], client=client)
+    [call] = client.messages.calls
+    assert call["model"] == LLM_MODEL
+    assert call["max_tokens"] == LLM_MAX_TOKENS
+    assert call["output_config"] == {"effort": LLM_EFFORT}
+    assert call["system"] == SYSTEM_PROMPT
+
+
+def test_generate_answer_sends_documents_then_question_in_one_user_turn() -> None:
+    chunks = [make_chunk("A.", page=1), make_chunk("B.", page=2)]
+    client = FakeClient(make_response([{"type": "text", "text": "Ok."}]))
+    generate_answer("What does E2210 mean?", chunks, client=client)
+    [message] = client.messages.calls[0]["messages"]
+    assert message["role"] == "user"
+    assert message["content"] == [
+        *document_blocks(chunks),
+        {"type": "text", "text": "What does E2210 mean?"},
+    ]
+
+
+def test_generate_answer_returns_the_parsed_answer() -> None:
+    chunk = make_chunk()
+    reply = {"type": "text", "text": "The jar is loose.", "citations": [cite(0, chunk.text)]}
+    client = FakeClient(make_response([reply]))
+    answer = generate_answer("What does E2210 mean?", [chunk], client=client)
+    assert answer.text == "The jar is loose."
+    assert answer.citations[0].chunk is chunk

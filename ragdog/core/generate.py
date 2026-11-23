@@ -5,9 +5,17 @@ This is the only module that imports a provider SDK (Rule 7).
 
 from dataclasses import dataclass
 
+import anthropic
 from anthropic.types import DocumentBlockParam, Message, TextCitation
 
+from ragdog.core.config import LLM_EFFORT, LLM_MAX_TOKENS, LLM_MODEL
 from ragdog.core.retrieve import RetrievedChunk
+
+SYSTEM_PROMPT: str = (
+    "Answer the user's question using only the documents provided.\n"
+    "If the documents don't contain the answer, say that they don't, and don't guess.\n"
+    "Keep the answer short."
+)
 
 
 class GenerationError(Exception):
@@ -79,3 +87,30 @@ def to_answer(response: Message, chunks: list[RetrievedChunk]) -> Answer:
         input_tokens=response.usage.input_tokens,
         output_tokens=response.usage.output_tokens,
     )
+
+
+def generate_answer(
+    question: str,
+    chunks: list[RetrievedChunk],
+    client: anthropic.Anthropic | None = None,
+) -> Answer:
+    """Ask Claude to answer the question from the chunks only, with citations.
+
+    Every LLM call in rag-dog goes through here (Rule 7). The key comes from
+    ANTHROPIC_API_KEY in the environment (Rule 8); pass `client` only in tests.
+    """
+    if client is None:
+        client = anthropic.Anthropic()
+    response = client.messages.create(
+        model=LLM_MODEL,
+        max_tokens=LLM_MAX_TOKENS,
+        output_config={"effort": LLM_EFFORT},
+        system=SYSTEM_PROMPT,
+        messages=[
+            {
+                "role": "user",
+                "content": [*document_blocks(chunks), {"type": "text", "text": question}],
+            }
+        ],
+    )
+    return to_answer(response, chunks)

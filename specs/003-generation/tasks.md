@@ -13,7 +13,7 @@ Tick each task when done. Keep this file current in the same PR as the code.
 - [x] T4 `Citation`, `Answer` dataclasses and `GenerationError`
 - [x] T5 `document_blocks` + test
 - [x] T6 `to_answer` (text blocks, skip thinking, map citations) + tests
-- [ ] T7 `generate_answer` happy path with a fake client + tests (request shape)
+- [x] T7 `generate_answer` happy path with a fake client + tests (request shape)
 - [ ] T8 Guards: blank question, empty chunks, missing API key (no API call) + tests
 - [ ] T9 Errors: `refusal`, `max_tokens`, `anthropic.APIError` → `GenerationError` + tests
 - [ ] T10 Rule 7 test: only `generate.py` imports `anthropic`
