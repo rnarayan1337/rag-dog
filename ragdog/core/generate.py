@@ -5,6 +5,8 @@ This is the only module that imports a provider SDK (Rule 7).
 
 from dataclasses import dataclass
 
+from anthropic.types import DocumentBlockParam
+
 from ragdog.core.retrieve import RetrievedChunk
 
 
@@ -28,3 +30,20 @@ class Answer:
     citations: list[Citation]
     input_tokens: int
     output_tokens: int  # thinking included
+
+
+def document_blocks(chunks: list[RetrievedChunk]) -> list[DocumentBlockParam]:
+    """One plain-text document per chunk, in retrieval order, with citations turned on.
+
+    The API numbers documents from 0 in this order, so a citation's document_index is
+    the index of its chunk in `chunks`.
+    """
+    return [
+        {
+            "type": "document",
+            "source": {"type": "text", "media_type": "text/plain", "data": chunk.text},
+            "title": f"{chunk.filename} p.{chunk.page}",
+            "citations": {"enabled": True},
+        }
+        for chunk in chunks
+    ]
