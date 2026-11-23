@@ -19,7 +19,7 @@ Tick each task when done. Keep this file current in the same PR as the code.
 
 - [x] T8 `scripts/check_retrieval.py` with the starter questions
 - [x] T9 Run it on the Acme handbook; record hits and misses (expected page in top 3?)
-- [ ] T10 Walk through every acceptance criterion in `spec.md`
+- [x] T10 Walk through every acceptance criterion in `spec.md`
 
 ### Check results (T9)
 
@@ -46,6 +46,21 @@ Notes:
 - Right pages scored 0.27–0.63; wrong pages 0.56–1.01. The ranges overlap, so one small
   document isn't enough to pick a weak-match cutoff (roadmap 007).
 - A larger document with similar-sounding sections is needed for a real test (roadmap 006).
+
+### Acceptance results (T10)
+
+| # | Criterion | Evidence | Result |
+|---|---|---|---|
+| 1 | ≤ `k` results, closest first, every field | `test_retrieve_returns_closest_first_with_all_fields`, `test_retrieve_defaults_to_top_k`, `test_to_chunks_maps_fields_in_order` | ✅ |
+| 2 | Question embedded with the ingestion model | `retrieve` opens the collection via `get_collection()` (`test_retrieve_without_collection_uses_get_collection`; model pinned per `test_get_collection_uses_cosine_and_configured_model`). Manual: embedding the question directly with `ONNXMiniLM_L6_V2` and querying by vector gave identical pages and distances to `retrieve` | ✅ |
+| 3 | `k` > stored returns all, no error | `test_retrieve_k_larger_than_collection_returns_all` | ✅ |
+| 4 | Empty collection returns `[]` | `test_retrieve_empty_collection_returns_nothing`, `test_to_chunks_no_hits_is_empty` | ✅ |
+| 5 | Blank question rejected clearly | `test_retrieve_rejects_blank_question` (`""`, spaces, newline) | ✅ |
+| 6 | `doc_hash` filter returns only that document | `test_retrieve_doc_hash_filter_searches_one_document`, `test_retrieve_unknown_doc_hash_returns_nothing` | ✅ |
+| 7 | Handbook: expected page in top 3 | Check results above: 8/8, all at rank 1 (weak test — 4 chunks) | ✅ |
+
+Constraints: `ragdog/core/` has no UI/HTTP imports ✅; no provider SDK imports (Rule 7) ✅;
+retrieval opens the collection only through `get_collection()` ✅.
 
 ## Close out
 
