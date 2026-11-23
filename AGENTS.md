@@ -29,6 +29,15 @@ uv run pytest                    # run tests
 uv run streamlit run app.py      # run the UI
 ```
 
+The `Makefile` wraps these. Run `make` to list the targets:
+
+```bash
+make install                     # uv sync
+make test                        # uv run pytest
+make run                         # uv run streamlit run app.py
+make clean                       # remove __pycache__ and .pytest_cache (keeps .ragdog_db)
+```
+
 ## Layout
 
 ```
