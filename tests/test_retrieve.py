@@ -101,3 +101,18 @@ def test_retrieve_without_collection_uses_get_collection(
     monkeypatch.setattr(retrieve_module, "get_collection", fake_get_collection)
     retrieve("question")
     assert calls == [True]
+
+
+def test_retrieve_doc_hash_filter_searches_one_document(fake_collection: Collection) -> None:
+    upsert_chunks(fake_collection, [(1, 0, "a" * 20), (2, 1, "b" * 30)], "doc-a", "a.txt")
+    upsert_chunks(fake_collection, [(1, 0, "c" * 20), (2, 1, "d" * 30)], "doc-b", "b.txt")
+    everything = retrieve("q" * 20, k=10, collection=fake_collection)
+    only_b = retrieve("q" * 20, k=10, doc_hash="doc-b", collection=fake_collection)
+    assert {r.doc_hash for r in everything} == {"doc-a", "doc-b"}
+    assert [r.filename for r in only_b] == ["b.txt", "b.txt"]
+    assert {r.doc_hash for r in only_b} == {"doc-b"}
+
+
+def test_retrieve_unknown_doc_hash_returns_nothing(fake_collection: Collection) -> None:
+    store(fake_collection, ["some text"])
+    assert retrieve("question", doc_hash="not-stored", collection=fake_collection) == []

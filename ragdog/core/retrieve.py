@@ -51,9 +51,13 @@ def to_chunks(result: QueryResult) -> list[RetrievedChunk]:
 def retrieve(
     question: str,
     k: int = TOP_K,
+    doc_hash: str | None = None,
     collection: Collection | None = None,
 ) -> list[RetrievedChunk]:
-    """Return up to k stored chunks closest in meaning to the question, closest first."""
+    """Return up to k stored chunks closest in meaning to the question, closest first.
+
+    If doc_hash is given, only that document's chunks are searched.
+    """
     if not question.strip():
         raise ValueError("Question is empty")
     if k < 1:
@@ -63,6 +67,7 @@ def retrieve(
     result = collection.query(
         query_texts=[question],
         n_results=k,
+        where={"doc_hash": doc_hash} if doc_hash else None,
         include=["documents", "metadatas", "distances"],
     )
     return to_chunks(result)
