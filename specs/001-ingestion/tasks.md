@@ -21,8 +21,8 @@ Tick each task when done. Keep this file current in the same PR as the code.
 
 ## Verify
 
-- [ ] T12 Ingest a real PDF; print a few stored chunks and their metadata; check by eye
-- [ ] T13 Restart and confirm chunks are still there
+- [x] T12 Ingest a real PDF; print a few stored chunks and their metadata; check by eye
+- [x] T13 Restart and confirm chunks are still there
 - [ ] T14 Walk through every acceptance criterion in `spec.md`
 
 ## Close out
