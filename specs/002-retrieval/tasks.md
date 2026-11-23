@@ -17,7 +17,7 @@ Tick each task when done. Keep this file current in the same PR as the code.
 
 ## Verify
 
-- [ ] T8 `scripts/check_retrieval.py` with the starter questions
+- [x] T8 `scripts/check_retrieval.py` with the starter questions
 - [ ] T9 Run it on the Acme handbook; record hits and misses (expected page in top 3?)
 - [ ] T10 Walk through every acceptance criterion in `spec.md`
 
