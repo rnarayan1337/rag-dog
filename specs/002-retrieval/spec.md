@@ -1,6 +1,6 @@
 # 002 — Retrieval: Spec
 
-**Status:** Draft · **Roadmap:** 002 · **Decisions:** 002, 003, 014 (to add)
+**Status:** Approved · **Roadmap:** 002 · **Decisions:** 002, 003, 014 (to add)
 
 ## Goal
 

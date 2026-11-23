@@ -5,12 +5,12 @@ Tick each task when done. Keep this file current in the same PR as the code.
 ## Setup
 
 - [x] T1 Create branch `feature/002-retrieval`
-- [ ] T2 Review and approve `spec.md` / `plan.md`
-- [ ] T3 Add `TOP_K = 5` to `ragdog/core/config.py`
+- [x] T2 Review and approve `spec.md` / `plan.md`
+- [x] T3 Add `TOP_K = 5` to `ragdog/core/config.py`
 
 ## Functions
 
-- [ ] T4 `RetrievedChunk` dataclass
+- [x] T4 `RetrievedChunk` dataclass
 - [ ] T5 `to_chunks` (unpack Chroma's nested query result) + test
 - [ ] T6 `retrieve` + tests (shape, order, `k`, empty collection, blank question)
 - [ ] T7 `doc_hash` filter + test
