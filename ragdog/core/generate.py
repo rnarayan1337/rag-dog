@@ -5,7 +5,7 @@ This is the only module that imports a provider SDK (Rule 7).
 
 from dataclasses import dataclass
 
-from anthropic.types import DocumentBlockParam
+from anthropic.types import DocumentBlockParam, Message, TextCitation
 
 from ragdog.core.retrieve import RetrievedChunk
 
@@ -47,3 +47,35 @@ def document_blocks(chunks: list[RetrievedChunk]) -> list[DocumentBlockParam]:
         }
         for chunk in chunks
     ]
+
+
+def to_citation(citation: TextCitation, chunks: list[RetrievedChunk]) -> Citation:
+    """Map one API citation back to the chunk it quotes (document_index = chunk position)."""
+    if citation.type != "char_location":  # plain-text documents only produce char_location
+        raise GenerationError(f"Unexpected citation type {citation.type!r}")
+    if not 0 <= citation.document_index < len(chunks):
+        raise GenerationError(
+            f"Citation points at document {citation.document_index}, "
+            f"but only {len(chunks)} were sent"
+        )
+    return Citation(chunk=chunks[citation.document_index], cited_text=citation.cited_text)
+
+
+def to_answer(response: Message, chunks: list[RetrievedChunk]) -> Answer:
+    """Join the response's text blocks into one Answer, keeping citations in answer order.
+
+    Thinking blocks (and anything else that isn't text) are skipped.
+    """
+    parts: list[str] = []
+    citations: list[Citation] = []
+    for block in response.content:
+        if block.type != "text":
+            continue
+        parts.append(block.text)
+        citations.extend(to_citation(c, chunks) for c in block.citations or [])
+    return Answer(
+        text="".join(parts).strip(),
+        citations=citations,
+        input_tokens=response.usage.input_tokens,
+        output_tokens=response.usage.output_tokens,
+    )

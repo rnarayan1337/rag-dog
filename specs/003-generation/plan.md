@@ -67,7 +67,8 @@ and a block that makes a claim carries a `citations` list (otherwise `None`):
 | `Answer` | frozen `@dataclass` | `text`, `citations`, `input_tokens`, `output_tokens` |
 | `GenerationError` | `Exception` subclass | One error type for callers (UI, script) to catch |
 | `document_blocks` | `(chunks: list[RetrievedChunk]) -> list[dict]` | Builds the request's document blocks |
-| `to_answer` | `(response, chunks: list[RetrievedChunk]) -> Answer` | Joins text blocks, maps citations to chunks; bad `document_index` → `GenerationError` |
+| `to_citation` | `(citation: TextCitation, chunks: list[RetrievedChunk]) -> Citation` | `chunks[document_index]`; unexpected type or out-of-range index → `GenerationError` |
+| `to_answer` | `(response: Message, chunks: list[RetrievedChunk]) -> Answer` | Joins text blocks (skips thinking), collects citations via `to_citation` |
 | `generate_answer` | `(question: str, chunks: list[RetrievedChunk], client: anthropic.Anthropic \| None = None) -> Answer` | Entry point (Rule 7) |
 
 `client=None` mirrors `retrieve(collection=None)`: real code passes nothing, tests pass a fake.
