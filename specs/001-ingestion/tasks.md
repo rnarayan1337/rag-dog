@@ -23,7 +23,24 @@ Tick each task when done. Keep this file current in the same PR as the code.
 
 - [x] T12 Ingest a real PDF; print a few stored chunks and their metadata; check by eye
 - [x] T13 Restart and confirm chunks are still there
-- [ ] T14 Walk through every acceptance criterion in `spec.md`
+- [x] T14 Walk through every acceptance criterion in `spec.md`
+
+### Acceptance results (T14)
+
+| # | Criterion | Evidence | Result |
+|---|---|---|---|
+| 1 | ≥ 1 chunk with all metadata fields | `test_upsert_chunks_stores_ids_text_and_metadata`; T12 real PDF: 4 chunks, all 6 fields | ✅ |
+| 2 | Same file twice → stored once, second call `0` | `test_ingest_file_twice_stores_once`; T12 second run returned `0` | ✅ |
+| 3 | Renamed copy is a duplicate | `test_ingest_file_renamed_copy_is_a_duplicate` | ✅ |
+| 4 | Chunks ≤ size; neighbours overlap | `test_chunk_pages_size_limit_and_overlap`, `test_split_text_*` | ✅ |
+| 5 | PDF chunks carry the right page | `test_ingest_file_pdf_chunks_carry_page_numbers`, `test_read_document_pdf_keeps_page_numbers`; T12 pages 1–4 | ✅ |
+| 6 | Chunks survive a restart | `test_get_collection_persists_across_clients`; T13 read back in a fresh process | ✅ |
+| 7 | Unsupported types rejected clearly | `test_read_document_rejects_unsupported_types`, `test_ingest_file_unsupported_type_stores_nothing` | ✅ |
+| 8 | ≥ 100 MB file hashes without loading it all | Manual: 120 MB file, peak memory 2 MB with `hash_file` vs 120 MB reading it whole; same hash | ✅ |
+
+Constraints: `ragdog/core/` has no UI/HTTP imports ✅. Chunk size vs ~256-token limit: prose
+chunks 126–181 tokens ✅; code-heavy text can reach ~340 tokens at 800 chars and be truncated
+(known trade-off, decision 003).
 
 ## Close out
 
