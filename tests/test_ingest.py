@@ -4,6 +4,7 @@ import hashlib
 from pathlib import Path
 
 import pytest
+from chromadb.api.models.Collection import Collection
 from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
 
 from ragdog.core.config import CHUNK_OVERLAP, CHUNK_SIZE, COLLECTION, EMBEDDING_MODEL
@@ -15,6 +16,7 @@ from ragdog.core.ingest import (
     hash_file,
     read_document,
     split_text,
+    upsert_chunks,
 )
 
 
@@ -146,3 +148,40 @@ def test_chunk_pages_page_numbers_and_global_index() -> None:
     assert [text for page, _, text in chunks if page == 2] == ["Short page two."]
     pages = [page for page, _, _ in chunks]
     assert pages == sorted(pages) and set(pages) == {1, 2, 3}
+
+
+CHUNKS = [(1, 0, "First chunk."), (1, 1, "Second chunk."), (2, 2, "Third, on page two.")]
+
+
+def test_upsert_chunks_stores_ids_text_and_metadata(fake_collection: Collection) -> None:
+    stored = upsert_chunks(fake_collection, CHUNKS, "abc", "uploads/report.pdf")
+    assert stored == 3
+    record = fake_collection.get(ids=["abc:2"], include=["documents", "metadatas"])
+    assert record["documents"] == ["Third, on page two."]
+    assert record["metadatas"] == [
+        {
+            "doc_hash": "abc",
+            "filename": "report.pdf",
+            "file_location": "uploads/report.pdf",
+            "chunk_index": 2,
+            "page": 2,
+            "embedding_model": EMBEDDING_MODEL,
+        }
+    ]
+
+
+def test_upsert_chunks_twice_does_not_duplicate(fake_collection: Collection) -> None:
+    upsert_chunks(fake_collection, CHUNKS, "abc", "report.pdf")
+    upsert_chunks(fake_collection, CHUNKS, "abc", "report.pdf")
+    assert fake_collection.count() == 3
+
+
+def test_upsert_chunks_in_batches(fake_collection: Collection) -> None:
+    many = [(1, i, f"Chunk {i}.") for i in range(7)]
+    assert upsert_chunks(fake_collection, many, "abc", "a.txt", batch_size=3) == 7
+    assert fake_collection.count() == 7
+
+
+def test_upsert_chunks_with_nothing_stores_nothing(fake_collection: Collection) -> None:
+    assert upsert_chunks(fake_collection, [], "abc", "empty.txt") == 0
+    assert fake_collection.count() == 0

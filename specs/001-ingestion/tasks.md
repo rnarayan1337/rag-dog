@@ -16,7 +16,7 @@ Tick each task when done. Keep this file current in the same PR as the code.
 - [x] T7 `read_document` for `.txt` / `.md` + test
 - [x] T8 `read_document` for `.pdf` (page numbers) + test with a small sample PDF
 - [x] T9 `chunk_pages` (recursive split + overlap) + tests
-- [ ] T10 `upsert_chunks` (ids + metadata) + test
+- [x] T10 `upsert_chunks` (ids + metadata) + test
 - [ ] T11 `ingest_file` orchestrator + dedup tests (same file, renamed copy)
 
 ## Verify

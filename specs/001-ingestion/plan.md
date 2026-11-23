@@ -13,7 +13,7 @@ ingest_file(path)
   ├─ if already_ingested(collection, doc_hash): return 0
   ├─ pages  = read_document(path)
   ├─ chunks = chunk_pages(pages)
-  └─ return upsert_chunks(chunks, doc_hash, path)
+  └─ return upsert_chunks(collection, chunks, doc_hash, path)
 ```
 
 ## Functions
@@ -30,7 +30,7 @@ ingest_file(path)
 | `overlap_tail` | `(chunk, overlap) -> str` | Last `overlap` chars, trimmed to start at a word |
 | `pack_pieces` | `(pieces, size, overlap) -> list[str]` | Packs pieces up to `size`; each new chunk starts with the previous tail; drops blank chunks |
 | `chunk_pages` | `(pages, size=CHUNK_SIZE, overlap=CHUNK_OVERLAP) -> list[tuple[int, int, str]]` | Returns `(page, chunk_index, text)`; split + pack per page |
-| `upsert_chunks` | `(chunks, doc_hash: str, path: str) -> int` | Builds ids + metadata; returns count stored |
+| `upsert_chunks` | `(collection, chunks, doc_hash: str, path: str, batch_size=UPSERT_BATCH_SIZE) -> int` | Builds ids + metadata; `upsert` in batches of 500 (re-running replaces, never duplicates); returns count stored |
 | `ingest_file` | `(path: str) -> int` | Orchestrator; `0` if duplicate |
 
 ## Settings (`ragdog/core/config.py`)
@@ -65,7 +65,8 @@ Recursive split, written by hand (no LangChain):
 
 ## Testing
 
-`pytest`, with a temporary ChromaDB directory per test.
+`pytest`, with a temporary ChromaDB directory per test. Tests that store text use a fake
+embedding function (`tests/conftest.py`), so they need no model download.
 
 - `hash_file`: same bytes → same hash; different bytes → different hash
 - `chunk_pages`: sizes within limit; overlap present; page numbers preserved

@@ -14,10 +14,12 @@ from ragdog.core.config import (
     CHUNK_SIZE,
     COLLECTION,
     DB_DIR,
+    EMBEDDING_MODEL,
     SUPPORTED_EXTENSIONS,
 )
 
 HASH_BLOCK_SIZE: int = 1024 * 1024  # 1 MB
+UPSERT_BATCH_SIZE: int = 500  # chunks embedded and stored per call
 SEPARATORS: tuple[str, ...] = ("\n\n", ". ", " ")  # paragraph → sentence → word
 
 
@@ -132,3 +134,32 @@ def chunk_pages(
         for chunk in pack_pieces(split_text(text, size), size, overlap):
             chunks.append((page, len(chunks), chunk))
     return chunks
+
+
+def upsert_chunks(
+    collection: Collection,
+    chunks: list[tuple[int, int, str]],
+    doc_hash: str,
+    path: str,
+    batch_size: int = UPSERT_BATCH_SIZE,
+) -> int:
+    """Embed and store chunks with their ids and metadata; return how many were stored."""
+    filename = Path(path).name
+    for start in range(0, len(chunks), batch_size):
+        batch = chunks[start : start + batch_size]
+        collection.upsert(
+            ids=[f"{doc_hash}:{index}" for _, index, _ in batch],
+            documents=[text for _, _, text in batch],
+            metadatas=[
+                {
+                    "doc_hash": doc_hash,
+                    "filename": filename,
+                    "file_location": path,
+                    "chunk_index": index,
+                    "page": page,
+                    "embedding_model": EMBEDDING_MODEL,
+                }
+                for page, index, _ in batch
+            ],
+        )
+    return len(chunks)
