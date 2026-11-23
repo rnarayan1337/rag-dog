@@ -77,3 +77,15 @@ def test_read_document_rejects_unsupported_types(tmp_path: Path, name: str) -> N
     path.write_bytes(b"whatever")
     with pytest.raises(ValueError, match="Unsupported file type"):
         read_document(str(path))
+
+
+SAMPLE_PDF = Path(__file__).parent / "fixtures" / "sample-3-pages.pdf"
+
+
+def test_read_document_pdf_keeps_page_numbers() -> None:
+    pages = read_document(str(SAMPLE_PDF))
+    assert [number for number, _ in pages] == [1, 2, 3]
+    assert "Bulldogs were bred in England." in pages[0][1]
+    assert "Retrieval finds the chunks." in pages[1][1]  # "ﬁ" ligature normalised
+    assert "Generation writes the answer." in pages[1][1]
+    assert "Citations name the page." in pages[2][1]

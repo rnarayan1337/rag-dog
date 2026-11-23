@@ -1,11 +1,13 @@
 """Ingestion: file → hash → pages → chunks → ChromaDB."""
 
 import hashlib
+import unicodedata
 from pathlib import Path
 
 import chromadb
 from chromadb.api.models.Collection import Collection
 from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
+from pypdf import PdfReader
 
 from ragdog.core.config import COLLECTION, DB_DIR, SUPPORTED_EXTENSIONS
 
@@ -43,6 +45,16 @@ def read_text(path: str) -> list[tuple[int, str]]:
     return [(1, text)]
 
 
+def read_pdf(path: str) -> list[tuple[int, str]]:
+    """Read a PDF as one (page, text) pair per page, numbered from 1."""
+    reader = PdfReader(path)
+    return [
+        # NFKC turns ligatures like "ﬁ" back into plain "fi"
+        (number, unicodedata.normalize("NFKC", page.extract_text() or ""))
+        for number, page in enumerate(reader.pages, start=1)
+    ]
+
+
 def read_document(path: str) -> list[tuple[int, str]]:
     """Return a document's text as (page, text) pairs; raise ValueError if unsupported."""
     ext = Path(path).suffix.lower()
@@ -50,5 +62,5 @@ def read_document(path: str) -> list[tuple[int, str]]:
         supported = ", ".join(sorted(SUPPORTED_EXTENSIONS))
         raise ValueError(f"Unsupported file type {ext or '(none)'!r}; expected one of {supported}")
     if ext == ".pdf":
-        raise NotImplementedError("PDF reading arrives in T8")
+        return read_pdf(path)
     return read_text(path)

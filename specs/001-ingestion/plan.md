@@ -25,6 +25,7 @@ ingest_file(path)
 | `already_ingested` | `(collection: Collection, doc_hash: str) -> bool` | `collection.get(where={"doc_hash": h}, limit=1, include=[])`; caller passes the collection so it is opened once |
 | `read_document` | `(path: str) -> list[tuple[int, str]]` | Checks the extension (`ValueError` if unsupported), then calls the reader for that type; all return `(page, text)` |
 | `read_text` | `(path: str) -> list[tuple[int, str]]` | `.txt` / `.md`: UTF-8 (bad bytes replaced), one page `1` |
+| `read_pdf` | `(path: str) -> list[tuple[int, str]]` | One pair per page, numbered from 1; text NFKC-normalised (ligatures like `ﬁ` → `fi`) |
 | `chunk_pages` | `(pages) -> list[tuple[int, int, str]]` | Returns `(page, chunk_index, text)`; recursive split per page |
 | `upsert_chunks` | `(chunks, doc_hash: str, path: str) -> int` | Builds ids + metadata; returns count stored |
 | `ingest_file` | `(path: str) -> int` | Orchestrator; `0` if duplicate |
@@ -43,7 +44,8 @@ ingest_file(path)
 ## Libraries
 
 - `hashlib` (stdlib) — hashing
-- `pypdf` — `PdfReader(path).pages[i].extract_text()`
+- `pypdf` — `PdfReader(path).pages[i].extract_text()`; may return ligature characters, so normalise with `unicodedata.normalize("NFKC", ...)`
+- Test fixture: `tests/fixtures/sample-3-pages.pdf` (known text on each page, made with headless Chrome)
 - `chromadb` (1.5.9) — `PersistentClient`; cosine is set with
   `configuration={"hnsw": {"space": "cosine"}}` (reopening ignores a different value).
 
