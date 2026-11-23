@@ -6,7 +6,9 @@ import pytest
 from anthropic.types import Message
 
 from ragdog.core.config import LLM_EFFORT, LLM_MAX_TOKENS, LLM_MODEL
+from ragdog.core import generate
 from ragdog.core.generate import (
+    NO_DOCUMENTS,
     SYSTEM_PROMPT,
     GenerationError,
     document_blocks,
@@ -194,3 +196,41 @@ def test_generate_answer_returns_the_parsed_answer() -> None:
     answer = generate_answer("What does E2210 mean?", [chunk], client=client)
     assert answer.text == "The jar is loose."
     assert answer.citations[0].chunk is chunk
+
+
+# --- generate_answer guards (none of these may call the API) ---
+
+
+@pytest.mark.parametrize("question", ["", "   ", "\n"])
+def test_generate_answer_rejects_blank_question(question: str) -> None:
+    client = FakeClient(make_response([{"type": "text", "text": "Ok."}]))
+    with pytest.raises(ValueError, match="empty"):
+        generate_answer(question, [make_chunk()], client=client)
+    assert client.messages.calls == []
+
+
+def test_generate_answer_with_no_chunks_returns_fixed_answer_without_calling_api() -> None:
+    client = FakeClient(make_response([{"type": "text", "text": "Ok."}]))
+    answer = generate_answer("What does E2210 mean?", [], client=client)
+    assert answer.text == NO_DOCUMENTS
+    assert answer.citations == []
+    assert (answer.input_tokens, answer.output_tokens) == (0, 0)
+    assert client.messages.calls == []
+
+
+def test_generate_answer_without_api_key_raises_clear_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    with pytest.raises(GenerationError, match="ANTHROPIC_API_KEY is not set"):
+        generate_answer("What does E2210 mean?", [make_chunk()])
+
+
+def test_generate_answer_without_client_builds_one_from_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake = FakeClient(make_response([{"type": "text", "text": "Ok."}]))
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setattr(generate.anthropic, "Anthropic", lambda: fake)
+    generate_answer("What does E2210 mean?", [make_chunk()])
+    assert len(fake.messages.calls) == 1

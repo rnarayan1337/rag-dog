@@ -3,6 +3,7 @@
 This is the only module that imports a provider SDK (Rule 7).
 """
 
+import os
 from dataclasses import dataclass
 
 import anthropic
@@ -16,6 +17,8 @@ SYSTEM_PROMPT: str = (
     "If the documents don't contain the answer, say that they don't, and don't guess.\n"
     "Keep the answer short."
 )
+
+NO_DOCUMENTS: str = "There are no documents to answer from. Upload a document first."
 
 
 class GenerationError(Exception):
@@ -99,7 +102,13 @@ def generate_answer(
     Every LLM call in rag-dog goes through here (Rule 7). The key comes from
     ANTHROPIC_API_KEY in the environment (Rule 8); pass `client` only in tests.
     """
+    if not question.strip():
+        raise ValueError("Question is empty")
+    if not chunks:
+        return Answer(text=NO_DOCUMENTS, citations=[], input_tokens=0, output_tokens=0)
     if client is None:
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            raise GenerationError("ANTHROPIC_API_KEY is not set")
         client = anthropic.Anthropic()
     response = client.messages.create(
         model=LLM_MODEL,
