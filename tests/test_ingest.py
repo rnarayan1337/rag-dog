@@ -3,7 +3,10 @@
 import hashlib
 from pathlib import Path
 
-from ragdog.core.ingest import HASH_BLOCK_SIZE, hash_file
+from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
+
+from ragdog.core.config import COLLECTION, EMBEDDING_MODEL
+from ragdog.core.ingest import HASH_BLOCK_SIZE, get_collection, hash_file
 
 
 def test_hash_file_same_bytes_same_hash(tmp_path: Path) -> None:
@@ -27,3 +30,15 @@ def test_hash_file_spanning_blocks_matches_whole_file_hash(tmp_path: Path) -> No
     path = tmp_path / "big.bin"
     path.write_bytes(data)
     assert hash_file(str(path)) == hashlib.sha256(data).hexdigest()
+
+
+def test_get_collection_uses_cosine_and_configured_model(tmp_path: Path) -> None:
+    col = get_collection(str(tmp_path))
+    assert col.name == COLLECTION
+    assert col.configuration["hnsw"]["space"] == "cosine"
+    assert ONNXMiniLM_L6_V2.MODEL_NAME == EMBEDDING_MODEL  # rule 4: one model
+
+
+def test_get_collection_persists_across_clients(tmp_path: Path) -> None:
+    get_collection(str(tmp_path)).add(ids=["x"], documents=["hi"], embeddings=[[0.0] * 384])
+    assert get_collection(str(tmp_path)).count() == 1

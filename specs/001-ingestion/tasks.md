@@ -11,7 +11,7 @@ Tick each task when done. Keep this file current in the same PR as the code.
 ## Functions
 
 - [x] T4 `hash_file` + test (same bytes → same hash; streams in blocks)
-- [ ] T5 `get_collection` (persistent, cosine)
+- [x] T5 `get_collection` (persistent, cosine)
 - [ ] T6 `already_ingested` + test
 - [ ] T7 `read_document` for `.txt` / `.md` + test
 - [ ] T8 `read_document` for `.pdf` (page numbers) + test with a small sample PDF

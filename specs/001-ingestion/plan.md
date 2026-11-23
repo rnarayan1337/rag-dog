@@ -20,7 +20,7 @@ ingest_file(path)
 | Function | Signature | Notes |
 |---|---|---|
 | `hash_file` | `(path: str) -> str` | SHA-256, read in 1 MB blocks |
-| `get_collection` | `() -> Collection` | Persistent client, cosine distance |
+| `get_collection` | `(db_dir: str = DB_DIR) -> Collection` | Persistent client, cosine distance, `ONNXMiniLM_L6_V2` embeddings; `db_dir` lets tests use a temp dir |
 | `already_ingested` | `(doc_hash: str) -> bool` | `collection.get(where={"doc_hash": h}, limit=1)` |
 | `read_document` | `(path: str) -> list[tuple[int, str]]` | One reader per file type; all return `(page, text)` |
 | `chunk_pages` | `(pages) -> list[tuple[int, int, str]]` | Returns `(page, chunk_index, text)`; recursive split per page |
@@ -42,8 +42,8 @@ ingest_file(path)
 
 - `hashlib` (stdlib) — hashing
 - `pypdf` — `PdfReader(path).pages[i].extract_text()`
-- `chromadb` — `PersistentClient`; cosine is set through collection metadata or
-  configuration depending on the Chroma version — check the installed version's docs.
+- `chromadb` (1.5.9) — `PersistentClient`; cosine is set with
+  `configuration={"hnsw": {"space": "cosine"}}` (reopening ignores a different value).
 
 ## Chunking approach
 
