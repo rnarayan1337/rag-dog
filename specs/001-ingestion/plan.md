@@ -8,8 +8,9 @@
 
 ```
 ingest_file(path)
+  ├─ collection = get_collection()
   ├─ doc_hash = hash_file(path)
-  ├─ if already_ingested(doc_hash): return 0
+  ├─ if already_ingested(collection, doc_hash): return 0
   ├─ pages  = read_document(path)
   ├─ chunks = chunk_pages(pages)
   └─ return upsert_chunks(chunks, doc_hash, path)
@@ -21,7 +22,7 @@ ingest_file(path)
 |---|---|---|
 | `hash_file` | `(path: str) -> str` | SHA-256, read in 1 MB blocks |
 | `get_collection` | `(db_dir: str = DB_DIR) -> Collection` | Persistent client, cosine distance, `ONNXMiniLM_L6_V2` embeddings; `db_dir` lets tests use a temp dir |
-| `already_ingested` | `(doc_hash: str) -> bool` | `collection.get(where={"doc_hash": h}, limit=1)` |
+| `already_ingested` | `(collection: Collection, doc_hash: str) -> bool` | `collection.get(where={"doc_hash": h}, limit=1, include=[])`; caller passes the collection so it is opened once |
 | `read_document` | `(path: str) -> list[tuple[int, str]]` | One reader per file type; all return `(page, text)` |
 | `chunk_pages` | `(pages) -> list[tuple[int, int, str]]` | Returns `(page, chunk_index, text)`; recursive split per page |
 | `upsert_chunks` | `(chunks, doc_hash: str, path: str) -> int` | Builds ids + metadata; returns count stored |

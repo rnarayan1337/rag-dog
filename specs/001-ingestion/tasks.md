@@ -12,7 +12,7 @@ Tick each task when done. Keep this file current in the same PR as the code.
 
 - [x] T4 `hash_file` + test (same bytes → same hash; streams in blocks)
 - [x] T5 `get_collection` (persistent, cosine)
-- [ ] T6 `already_ingested` + test
+- [x] T6 `already_ingested` + test
 - [ ] T7 `read_document` for `.txt` / `.md` + test
 - [ ] T8 `read_document` for `.pdf` (page numbers) + test with a small sample PDF
 - [ ] T9 `chunk_pages` (recursive split + overlap) + tests

@@ -6,7 +6,7 @@ from pathlib import Path
 from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
 
 from ragdog.core.config import COLLECTION, EMBEDDING_MODEL
-from ragdog.core.ingest import HASH_BLOCK_SIZE, get_collection, hash_file
+from ragdog.core.ingest import HASH_BLOCK_SIZE, already_ingested, get_collection, hash_file
 
 
 def test_hash_file_same_bytes_same_hash(tmp_path: Path) -> None:
@@ -42,3 +42,16 @@ def test_get_collection_uses_cosine_and_configured_model(tmp_path: Path) -> None
 def test_get_collection_persists_across_clients(tmp_path: Path) -> None:
     get_collection(str(tmp_path)).add(ids=["x"], documents=["hi"], embeddings=[[0.0] * 384])
     assert get_collection(str(tmp_path)).count() == 1
+
+
+def test_already_ingested_true_only_for_stored_hash(tmp_path: Path) -> None:
+    col = get_collection(str(tmp_path))
+    assert not already_ingested(col, "abc")
+    col.add(
+        ids=["abc:0"],
+        documents=["chunk"],
+        embeddings=[[0.0] * 384],
+        metadatas=[{"doc_hash": "abc"}],
+    )
+    assert already_ingested(col, "abc")
+    assert not already_ingested(col, "def")

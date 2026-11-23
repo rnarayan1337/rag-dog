@@ -28,3 +28,9 @@ def get_collection(db_dir: str = DB_DIR) -> Collection:
         configuration={"hnsw": {"space": "cosine"}},  # fixed at creation
         embedding_function=ONNXMiniLM_L6_V2(),  # all-MiniLM-L6-v2, see EMBEDDING_MODEL
     )
+
+
+def already_ingested(collection: Collection, doc_hash: str) -> bool:
+    """Return True if any chunk from the document with this hash is stored."""
+    found = collection.get(where={"doc_hash": doc_hash}, limit=1, include=[])
+    return len(found["ids"]) > 0
