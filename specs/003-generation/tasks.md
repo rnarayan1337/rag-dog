@@ -99,7 +99,7 @@ it, and the check above confirmed it on real data. Enforcing citations is roadma
 
 ## Close out
 
-- [ ] T14 Add decision 015 (generation: Haiku 5.5 at effort `low`, Citations API with one
+- [x] T14 Add decision 015 (generation: Haiku 5.5 at effort `low`, Citations API with one
       plain-text document per chunk, no server-side fallback) to `docs/decisions.md`
 - [ ] T15 Mark 003 ✅ in `docs/roadmap.md`
 - [ ] T16 Open PR, review, merge
