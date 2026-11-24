@@ -21,8 +21,56 @@ Tick each task when done. Keep this file current in the same PR as the code.
 ## Verify
 
 - [x] T11 `scripts/check_answers.py` with the 9 questions
-- [ ] T12 Run it on the Acme handbook (ask the owner first — costs money); record answers,
+- [x] T12 Run it on the Acme handbook (ask the owner first — costs money); record answers,
       citations and token counts
+
+### Check results (T12)
+
+`acme-handbook.pdf` (4 chunks, so every question gets the whole document), `claude-haiku-5-5`,
+effort `low`, run 2026-11-23.
+
+| Question | Expected | Answer | Cited | Tokens in / out |
+|---|---|---|---|---|
+| What does error E2210 mean? | Jar not seated (p3) | ✅ Jar not seated, plus the fix | p3 | 2,508 / 69 |
+| What does error E4012 mean? | Motor overheated (p3) | ✅ Overheated, plus the fix · repeats itself | p3 ×2 | 2,508 / 121 |
+| How much does the XJ-4417 cost? | $59, not $129 (p2) | ✅ $59, Mini Blender | p2 | 2,512 / 46 |
+| How much is the Turbo Blender? | $129 (p2) | ✅ $129 · repeats itself | p2 | 2,510 / 108 |
+| Return an opened product? | 14 days, −10% (p1) | ✅ 14 days, −10% · repeats itself | p1 ×2 | 2,510 / 125 |
+| Blender motor warranty? | 5 years, Turbo (p4) | ✅ 5 years, Turbo · repeats itself · adds a guess ("presumably") about other models | p4 ×2 | 2,512 / 174 |
+| Who founded Acme? | Dana Whitfield (p1) | ✅ Dana Whitfield, 1998, Tulsa · repeats itself | p1 | 2,506 / 96 |
+| How do I fix bitter coffee? | Descale (p3) | ✅ Descale, vinegar then 2 plain · repeats itself | p3 ×2 | 2,510 / 128 |
+| What is Acme's annual revenue? | Doesn't say | ✅ "The documents don't contain…" | none | 2,510 / 60 |
+
+**9/9 correct facts, all citations on the expected page.** The XJ-4417 / XJ-4471 trap was
+answered correctly. Total 22,586 in + 927 out tokens ≈ $0.003 at $0.10 / $0.50 per million.
+
+Notes:
+- **Repetition (6/9):** answers often state a fact, then repeat it almost word for word,
+  e.g. "Opened products can be returned within 14 days… Opened products can be returned
+  within 14 days…". The repeated sentence is usually the cited one.
+  **Cause: the model, not our joining.** One more call (2,510 / 98 tokens) printed the raw
+  blocks: Haiku writes a claim, then emits the source sentence verbatim as the *cited* block
+  (`' Returns are started from the Orders page of your account, per '` +
+  `'Start a return from the Orders page of your account.'` ← cited). `to_answer` joins the
+  blocks exactly as sent. The output also varies run to run: the same question repeated
+  itself word for word in the first run, and "per <quote>" in the second.
+  **Tried: a prompt line** ("State each fact once, in your own words. Don't repeat the source
+  text after it; citations are attached automatically."). Re-run 2026-11-23: still 9/9
+  correct with the right pages, but **5/9 still repeat** (E4012, Turbo Blender, returns,
+  warranty, founder) — no real change from 6/9, and within run-to-run variation. 22,883 in /
+  905 out tokens (the line adds ~33 input tokens per question). Not run a second time: the
+  result was clear enough. **Line removed** (a rule that doesn't change the output only adds
+  tokens). Open; see `docs/challenges.md`.
+- **One small guess:** the warranty answer says the two-year warranty "would presumably
+  apply" to other models — a reasonable reading, but the prompt says not to guess.
+- **Headings in quotes:** some `cited_text` starts with a page heading ("Troubleshooting If
+  your blender…"), because PDF extraction joins the heading line to the first sentence.
+  Cosmetic; an ingestion detail, not a generation bug.
+- **Input tokens were ~2,500, not the ~1,500 estimated.** Citations add their own system
+  instructions; the handbook's 4 chunks are ~1,000 tokens of that.
+- Output was 46–174 tokens, so at `low` effort Haiku did little or no thinking.
+- Weak test, as in 002: 4 chunks means retrieval always sent the right page.
+
 - [ ] T13 Walk through every acceptance criterion in `spec.md`
 
 ## Close out

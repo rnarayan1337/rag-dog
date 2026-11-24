@@ -90,6 +90,10 @@ If the documents don't contain the answer, say that they don't, and don't guess.
 Keep the answer short.
 ```
 
+A fourth line, "State each fact once, in your own words…", was tried after T12 to stop
+answers repeating their cited sentence. It made no real difference and was removed (see
+`tasks.md`, T12 notes, and `docs/challenges.md`).
+
 ## Errors
 
 | Case | What we raise |
