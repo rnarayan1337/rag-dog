@@ -71,7 +71,31 @@ Notes:
 - Output was 46–174 tokens, so at `low` effort Haiku did little or no thinking.
 - Weak test, as in 002: 4 chunks means retrieval always sent the right page.
 
-- [ ] T13 Walk through every acceptance criterion in `spec.md`
+- [x] T13 Walk through every acceptance criterion in `spec.md`
+
+### Acceptance results (T13)
+
+Checked 2026-11-23. No extra API calls: criteria 1 and 8 use the T12 runs.
+
+| # | Criterion | Evidence | Result |
+|---|---|---|---|
+| 1 | Non-empty text; every citation points at a chunk sent, and its `cited_text` is in that chunk | `test_to_answer_joins_text_and_maps_citations_to_chunks`, `test_generate_answer_returns_the_parsed_answer`, `test_to_answer_rejects_citation_outside_the_chunks_sent`. Real data: all 13 quotes from the T12 runs appear in their chunk (whitespace-normalised), and both raw `cited_text`s from the debug call appear verbatim | ✅ |
+| 2 | Only `generate.py` imports `anthropic` | `test_only_generate_imports_a_provider_sdk`, `test_generate_is_scanned_and_does_import_anthropic` (also catches `openai`, `litellm`; proved by a temporary violating file) | ✅ |
+| 3 | Key from `ANTHROPIC_API_KEY`; `core` never loads `.env` or stores the key; missing key is a clear error | `test_generate_answer_without_api_key_raises_clear_error`, `test_generate_answer_without_client_builds_one_from_env`. `grep load_dotenv ragdog/` finds nothing; only `scripts/check_answers.py` calls it | ✅ |
+| 4 | No chunks → fixed answer, no API call | `test_generate_answer_with_no_chunks_returns_fixed_answer_without_calling_api` | ✅ |
+| 5 | Blank question rejected, no API call | `test_generate_answer_rejects_blank_question` (`""`, spaces, newline) | ✅ |
+| 6 | Refusal, `max_tokens`, API errors → `GenerationError` saying which | `test_generate_answer_refusal_raises_with_category`, `..._refusal_without_details_says_unknown`, `..._cut_off_at_max_tokens_raises`, `..._bad_key_raises_clear_error`, `..._api_errors_become_generation_error` (rate limit, server, network; cause chained) | ✅ |
+| 7 | Model, effort, `max_tokens` from `config.py` | `test_generate_answer_sends_settings_from_config` | ✅ |
+| 8 | Handbook: right answer citing the expected page; unanswerable question says so | T12: 9/9 correct, every citation on the expected page, revenue question "The documents don't say…" with no citation | ✅ with notes |
+
+Notes on 8: answers often repeat their cited sentence (open, `docs/challenges.md`), and
+the warranty answer adds a mild guess about other models. Neither makes an answer wrong.
+
+Constraints: `ragdog/core/` has no UI/HTTP imports and no `load_dotenv()` ✅; unit tests use
+a fake client, no network ✅; every real run was approved first ✅.
+
+Gap: nothing in the code checks that `cited_text` really is in the chunk; the API guarantees
+it, and the check above confirmed it on real data. Enforcing citations is roadmap 007.
 
 ## Close out
 
