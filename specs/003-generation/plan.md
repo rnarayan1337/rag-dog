@@ -69,6 +69,7 @@ and a block that makes a claim carries a `citations` list (otherwise `None`):
 | `document_blocks` | `(chunks: list[RetrievedChunk]) -> list[dict]` | Builds the request's document blocks |
 | `to_citation` | `(citation: TextCitation, chunks: list[RetrievedChunk]) -> Citation` | `chunks[document_index]`; unexpected type or out-of-range index → `GenerationError` |
 | `to_answer` | `(response: Message, chunks: list[RetrievedChunk]) -> Answer` | Joins text blocks (skips thinking), collects citations via `to_citation` |
+| `check_stop_reason` | `(response: Message) -> None` | `refusal` / `max_tokens` → `GenerationError` |
 | `generate_answer` | `(question: str, chunks: list[RetrievedChunk], client: anthropic.Anthropic \| None = None) -> Answer` | Entry point (Rule 7) |
 
 `client=None` mirrors `retrieve(collection=None)`: real code passes nothing, tests pass a fake.

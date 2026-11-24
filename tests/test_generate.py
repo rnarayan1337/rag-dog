@@ -2,6 +2,8 @@
 
 from typing import Any
 
+import anthropic
+import httpx2  # the HTTP library the SDK is built on; needed to build its error objects
 import pytest
 from anthropic.types import Message
 
@@ -49,6 +51,7 @@ def make_response(
     stop_reason: str = "end_turn",
     input_tokens: int = 100,
     output_tokens: int = 20,
+    stop_details: dict[str, Any] | None = None,
 ) -> Message:
     """A real SDK Message built from plain dicts, the same shape the API sends back."""
     return Message.model_validate(
@@ -59,28 +62,33 @@ def make_response(
             "model": "claude-haiku-5-5",
             "content": content,
             "stop_reason": stop_reason,
+            "stop_details": stop_details,
             "usage": {"input_tokens": input_tokens, "output_tokens": output_tokens},
         }
     )
 
 
 class FakeMessages:
-    """Stands in for client.messages: records each create() call, returns a canned reply."""
+    """Stands in for client.messages: records each create() call, returns a canned reply
+    (or raises `error`, to act like a failed API call)."""
 
-    def __init__(self, response: Message) -> None:
+    def __init__(self, response: Message | None, error: Exception | None = None) -> None:
         self.response = response
+        self.error = error
         self.calls: list[dict[str, Any]] = []
 
-    def create(self, **kwargs: Any) -> Message:
+    def create(self, **kwargs: Any) -> Message | None:
         self.calls.append(kwargs)
+        if self.error is not None:
+            raise self.error
         return self.response
 
 
 class FakeClient:
     """Stands in for anthropic.Anthropic: no network, no key, no cost."""
 
-    def __init__(self, response: Message) -> None:
-        self.messages = FakeMessages(response)
+    def __init__(self, response: Message | None = None, error: Exception | None = None) -> None:
+        self.messages = FakeMessages(response, error)
 
 
 # --- document_blocks ---
@@ -234,3 +242,58 @@ def test_generate_answer_without_client_builds_one_from_env(
     monkeypatch.setattr(generate.anthropic, "Anthropic", lambda: fake)
     generate_answer("What does E2210 mean?", [make_chunk()])
     assert len(fake.messages.calls) == 1
+
+
+# --- generate_answer errors ---
+
+API_URL = "https://api.anthropic.com/v1/messages"
+
+
+def api_status_error(cls: type[anthropic.APIStatusError], status: int) -> anthropic.APIStatusError:
+    """An SDK status error (401, 429, ...) as the client would raise it."""
+    response = httpx2.Response(status, request=httpx2.Request("POST", API_URL))
+    return cls(f"HTTP {status}", response=response, body=None)
+
+
+def test_generate_answer_refusal_raises_with_category() -> None:
+    response = make_response(
+        [],
+        stop_reason="refusal",
+        stop_details={"type": "refusal", "category": "cyber", "explanation": None},
+    )
+    with pytest.raises(GenerationError, match=r"declined to answer \(category: cyber\)"):
+        generate_answer("What does E2210 mean?", [make_chunk()], client=FakeClient(response))
+
+
+def test_generate_answer_refusal_without_details_says_unknown() -> None:
+    response = make_response([], stop_reason="refusal")
+    with pytest.raises(GenerationError, match="category: unknown"):
+        generate_answer("What does E2210 mean?", [make_chunk()], client=FakeClient(response))
+
+
+def test_generate_answer_cut_off_at_max_tokens_raises() -> None:
+    response = make_response([{"type": "text", "text": "Error E2210 me"}], stop_reason="max_tokens")
+    with pytest.raises(GenerationError, match="cut off at max_tokens"):
+        generate_answer("What does E2210 mean?", [make_chunk()], client=FakeClient(response))
+
+
+def test_generate_answer_bad_key_raises_clear_error() -> None:
+    error = api_status_error(anthropic.AuthenticationError, 401)
+    with pytest.raises(GenerationError, match="missing or invalid") as caught:
+        generate_answer("What does E2210 mean?", [make_chunk()], client=FakeClient(error=error))
+    assert caught.value.__cause__ is error
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        api_status_error(anthropic.RateLimitError, 429),
+        api_status_error(anthropic.InternalServerError, 500),
+        anthropic.APIConnectionError(request=httpx2.Request("POST", API_URL)),
+    ],
+    ids=["rate-limit", "server", "network"],
+)
+def test_generate_answer_api_errors_become_generation_error(error: anthropic.APIError) -> None:
+    with pytest.raises(GenerationError, match="Claude API call failed") as caught:
+        generate_answer("What does E2210 mean?", [make_chunk()], client=FakeClient(error=error))
+    assert caught.value.__cause__ is error

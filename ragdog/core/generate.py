@@ -92,6 +92,15 @@ def to_answer(response: Message, chunks: list[RetrievedChunk]) -> Answer:
     )
 
 
+def check_stop_reason(response: Message) -> None:
+    """Raise if Claude refused or ran out of tokens; either way the text can't be trusted."""
+    if response.stop_reason == "refusal":
+        category = response.stop_details.category if response.stop_details else None
+        raise GenerationError(f"Claude declined to answer (category: {category or 'unknown'})")
+    if response.stop_reason == "max_tokens":
+        raise GenerationError(f"Answer was cut off at max_tokens ({LLM_MAX_TOKENS})")
+
+
 def generate_answer(
     question: str,
     chunks: list[RetrievedChunk],
@@ -110,16 +119,22 @@ def generate_answer(
         if not os.environ.get("ANTHROPIC_API_KEY"):
             raise GenerationError("ANTHROPIC_API_KEY is not set")
         client = anthropic.Anthropic()
-    response = client.messages.create(
-        model=LLM_MODEL,
-        max_tokens=LLM_MAX_TOKENS,
-        output_config={"effort": LLM_EFFORT},
-        system=SYSTEM_PROMPT,
-        messages=[
-            {
-                "role": "user",
-                "content": [*document_blocks(chunks), {"type": "text", "text": question}],
-            }
-        ],
-    )
+    try:
+        response = client.messages.create(
+            model=LLM_MODEL,
+            max_tokens=LLM_MAX_TOKENS,
+            output_config={"effort": LLM_EFFORT},
+            system=SYSTEM_PROMPT,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [*document_blocks(chunks), {"type": "text", "text": question}],
+                }
+            ],
+        )
+    except anthropic.AuthenticationError as e:
+        raise GenerationError("ANTHROPIC_API_KEY is missing or invalid") from e
+    except anthropic.APIError as e:  # rate limit, network, server; the SDK already retried
+        raise GenerationError(f"Claude API call failed: {e}") from e
+    check_stop_reason(response)
     return to_answer(response, chunks)
