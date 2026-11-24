@@ -143,3 +143,33 @@ Add a new entry whenever a decision is made or changed — in the same PR as the
   pages 0.56–1.01. The ranges overlap, so one small document can't set a cutoff.
 - **Revisit when:** 006's golden set shows recall@5 misses (try a larger k, or re-ranking in
   008), or 007 adds a weak-match check (use the recorded distances to choose a threshold).
+
+## 015 — Generation: Haiku 5.5, Citations API, one document per chunk
+*2026-11-23*
+
+- **Decision:** `generate_answer(question, chunks)` in `ragdog/core/generate.py` calls
+  `claude-haiku-5-5` at effort `low` (non-streaming, `max_tokens` 16000). Each chunk is sent as
+  its own plain-text `document` block with citations enabled, and the API's citations are
+  mapped back to chunks by `document_index`. The answer comes back as a frozen `Answer` (text,
+  citations, token counts). Refusals, `max_tokens` cut-offs, a missing key and API errors all
+  raise one `GenerationError`. No chunks means a fixed answer without calling the API.
+- **Why:** Short answers from ~1,000 tokens of context don't need a large model. Haiku costs
+  $0.10 / $0.50 per million tokens, against $2 / $10 for Sonnet 5.5 and $4 / $20 for
+  Opus 5.5. The Citations API returns the exact quoted text with each claim, so we don't parse
+  "[1]" markers or trust the model to number sources. Plain-text documents give sentence-level
+  quotes, which are better evidence than whole 800-character chunks.
+- **Trade-off:** No server-side refusal fallback: Haiku 5.5 doesn't support it, so a refusal
+  is an error the user sees. Probably weaker than Sonnet or Opus at careful reading and at
+  saying "I don't know", not yet measured (roadmap 012). Citations can't be combined with
+  structured JSON output.
+- **Considered:** Opus 5.5 (the SDK default, ~40× the cost); Sonnet 5.5; asking for "[1]"
+  markers in the prompt and parsing them; custom-content documents (whole-chunk citations).
+- **Measured (2026-11-23):** Handbook, 9 questions: 9/9 correct, every citation on the
+  expected page, the XJ-4417 / XJ-4471 trap handled, and the unanswerable question answered
+  "the documents don't say". About 2,500 input tokens per question (the citations feature adds
+  its own instructions), so roughly $0.003 per 9-question run. 5–6 of 9 answers repeat their
+  cited sentence. A prompt line to stop that didn't help and was removed
+  (`docs/challenges.md`).
+- **Revisit when:** Roadmap 012 compares models (switch with `LLM_MODEL`, and add the
+  fallback if leaving Haiku), the 004 UI needs streaming, or 006's golden set shows wrong
+  answers.

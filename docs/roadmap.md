@@ -12,7 +12,7 @@ Status: ⬜ not started · 🟨 in progress · ✅ done · 🅿️ parked
 | 000 | Setup | Repo, SSH + signed commits, uv project, `.env` | ✅ |
 | 001 | Ingestion | Upload → hash/dedup → read pages → chunk → store in ChromaDB | ✅ |
 | 002 | Retrieval | Embed the question, return top-k chunks; check them by eye | ✅ |
-| 003 | Generation | Prompt + chunks → Claude → cited answer | ⬜ |
+| 003 | Generation | Prompt + chunks → Claude → cited answer | ✅ |
 | 004 | Upload UI | Streamlit page to upload files and chat | ⬜ |
 | 005 | Packaging | Docker image, volume mount for the DB, API key at run time | ⬜ |
 
@@ -28,6 +28,7 @@ Status: ⬜ not started · 🟨 in progress · ✅ done · 🅿️ parked
 | 009 | API | FastAPI wrapper around `core/` (`POST /documents`, `POST /ask`) | 🅿️ |
 | 010 | Re-embedding | Blue/green migration to a new embedding model | 🅿️ |
 | 011 | Pluggable LLM | Provider chosen by config (Claude, Ollama, OpenAI…) via LiteLLM or the OpenAI-compatible SDK, behind `generate_answer` | 🅿️ |
+| 012 | Model comparison | Run the same questions on several models (e.g. Haiku 5.5 vs Sonnet 5.5) and compare answers, citations, refusals, tokens and cost side by side; builds on 006's golden set | 🅿️ |
 
 ## Ideas (not committed)
 

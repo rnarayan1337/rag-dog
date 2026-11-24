@@ -9,6 +9,7 @@ answers from the retrieved chunks, with citations.
 
 - What we're building and when: `docs/roadmap.md`
 - Why things are the way they are: `docs/decisions.md`
+- What went wrong and how we fixed it: `docs/challenges.md`
 - Current feature: `specs/<NNN-name>/` (`spec.md`, `plan.md`, `tasks.md`)
 
 ## How to work with the owner
@@ -45,7 +46,7 @@ ragdog/core/     # ingestion, retrieval, generation — pure Python, no UI or HT
 app.py           # Streamlit UI (calls ragdog.core directly)
 tests/           # pytest tests
 scripts/         # dev tools (e.g. check_retrieval.py); not part of ragdog/core
-docs/            # roadmap.md, decisions.md
+docs/            # roadmap.md, decisions.md, challenges.md
 specs/           # one folder per roadmap item
 assets/          # logo, banner, favicon
 ```
