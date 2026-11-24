@@ -20,7 +20,7 @@ Tick each task when done. Keep this file current in the same PR as the code.
 
 ## Verify
 
-- [ ] T11 `scripts/check_answers.py` with the 9 questions
+- [x] T11 `scripts/check_answers.py` with the 9 questions
 - [ ] T12 Run it on the Acme handbook (ask the owner first — costs money); record answers,
       citations and token counts
 - [ ] T13 Walk through every acceptance criterion in `spec.md`
