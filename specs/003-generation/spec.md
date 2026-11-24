@@ -1,6 +1,6 @@
 # 003 — Generation: Spec
 
-**Status:** In progress · **Roadmap:** 003 · **Decisions:** 011, 012, 014, 015 (new)
+**Status:** Done · **Roadmap:** 003 · **Decisions:** 011, 012, 014, 015
 
 ## Goal
 
