@@ -10,7 +10,9 @@ from streamlit.testing.v1 import AppTest
 
 import app
 import ragdog.core.ingest
+from ragdog.core.generate import Citation
 from ragdog.core.ingest import DocumentInfo, upsert_chunks
+from ragdog.core.retrieve import RetrievedChunk
 
 APP = str(Path(__file__).resolve().parent.parent / "app.py")
 TEXT = b"Error E2210 means the jar is not seated correctly. Lift the jar and seat it again."
@@ -171,3 +173,40 @@ def test_upload_appears_in_list_straight_away() -> None:
     upload(at, ("handbook.txt", TEXT))
     assert at.sidebar.markdown[-1].value == "- handbook.txt · 1 chunk"
     assert at.sidebar.selectbox[0].options == ["All documents", "handbook.txt"]
+
+
+# --- sources ---
+
+
+def cite(quote: str, filename: str = "acme-handbook.pdf", page: int = 3) -> Citation:
+    chunk = RetrievedChunk(quote, filename, page, chunk_index=0, doc_hash="h", distance=0.3)
+    return Citation(chunk=chunk, cited_text=quote)
+
+
+def test_sources_none() -> None:
+    assert app.sources([]) == []
+
+
+def test_sources_format_and_whitespace() -> None:
+    lines = app.sources([cite("Error E2210 means\nthe jar is  not seated. ")])
+    assert lines == ["acme-handbook.pdf · p.3 — “Error E2210 means the jar is not seated.”"]
+
+
+def test_sources_drops_repeats_keeps_order() -> None:
+    lines = app.sources(
+        [
+            cite("Descale the machine.", page=3),
+            cite("Opened products: 14 days.", page=1),
+            cite("Descale the machine.", page=3),
+        ]
+    )
+    assert lines == [
+        "acme-handbook.pdf · p.3 — “Descale the machine.”",
+        "acme-handbook.pdf · p.1 — “Opened products: 14 days.”",
+    ]
+
+
+def test_sources_same_quote_in_two_places_is_kept_twice() -> None:
+    """A footer repeated on two pages is two sources, not one."""
+    lines = app.sources([cite("Acme Ltd.", page=1), cite("Acme Ltd.", page=2)])
+    assert len(lines) == 2

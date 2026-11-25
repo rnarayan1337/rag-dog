@@ -21,7 +21,7 @@ Tick each task when done. Keep this file current in the same PR as the code.
       "added / already uploaded / no text found / couldn't read", handled uploads remembered
       across reruns + `AppTest` tests
 - [x] T8 Document list and "Search in" choice
-- [ ] T9 `sources()` formatting (collapse whitespace, drop duplicates) + tests
+- [x] T9 `sources()` formatting (collapse whitespace, drop duplicates) + tests
 - [ ] T10 Chat: history in `st.session_state`, `retrieve` → `generate_answer` with a spinner,
       `GenerationError` shown as an error + `AppTest` tests with a fake `generate_answer`
 

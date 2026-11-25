@@ -13,6 +13,7 @@ from chromadb.api.models.Collection import Collection
 from dotenv import load_dotenv
 
 from ragdog.core.config import SUPPORTED_EXTENSIONS
+from ragdog.core.generate import Citation
 from ragdog.core.ingest import (
     DocumentInfo,
     already_ingested,
@@ -122,6 +123,21 @@ def documents_sidebar(collection: Collection) -> str | None:
     )
     choice = st.selectbox("Search in", list(labels))
     return labels[choice]
+
+
+def sources(citations: list[Citation]) -> list[str]:
+    """One line per distinct quote, in answer order: 'file · p.3 — “quoted text”'.
+
+    Whitespace is collapsed (PDF text keeps its line breaks), and a line already listed is
+    skipped, so a sentence cited twice shows once. Plain text: escaping is the caller's job.
+    """
+    lines: list[str] = []
+    for citation in citations:
+        quote = " ".join(citation.cited_text.split())
+        line = f"{citation.chunk.filename} · p.{citation.chunk.page} — “{quote}”"
+        if line not in lines:
+            lines.append(line)
+    return lines
 
 
 def main() -> None:
