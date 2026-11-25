@@ -4,16 +4,19 @@ Run with `make run` (uv run streamlit run app.py). It calls ragdog.core directly
 """
 
 import os
+import re
 import tempfile
 from collections import Counter
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import streamlit as st
 from chromadb.api.models.Collection import Collection
 from dotenv import load_dotenv
 
 from ragdog.core.config import SUPPORTED_EXTENSIONS
-from ragdog.core.generate import Citation
+from ragdog.core.generate import Citation, GenerationError, generate_answer
 from ragdog.core.ingest import (
     DocumentInfo,
     already_ingested,
@@ -22,10 +25,13 @@ from ragdog.core.ingest import (
     ingest_file,
     list_documents,
 )
+from ragdog.core.retrieve import retrieve
 
 ASSETS = Path(__file__).resolve().parent / "assets"
 UPLOAD_TYPES = sorted(ext.lstrip(".") for ext in SUPPORTED_EXTENSIONS)  # ["md", "pdf", "txt"]
 ALL_DOCUMENTS = "All documents"
+# Characters Streamlit's markdown would treat as formatting ($ starts maths)
+MARKDOWN_SPECIAL = re.compile(r"([\\`*_\[\]<>#$~|])")
 NO_KEY_WARNING = (
     "`ANTHROPIC_API_KEY` is not set, so questions can't be answered. "
     "Add it to `.env` and restart the app."
@@ -140,6 +146,53 @@ def sources(citations: list[Citation]) -> list[str]:
     return lines
 
 
+def escape_markdown(text: str) -> str:
+    """Make document text show as typed: "$59 or $129" isn't maths, "*" isn't bold."""
+    return MARKDOWN_SPECIAL.sub(r"\\\1", text)
+
+
+@dataclass(frozen=True)
+class ChatMessage:
+    """One message in the chat history. Strings only, so session state stays small."""
+
+    role: Literal["user", "assistant"]
+    text: str
+    sources: tuple[str, ...] = ()
+    error: bool = False
+
+
+def ask(question: str, search_in: str | None, collection: Collection) -> ChatMessage:
+    """Retrieve chunks for the question and get Claude's cited answer (or the error)."""
+    chunks = retrieve(question, doc_hash=search_in, collection=collection)
+    try:
+        answer = generate_answer(question, chunks)
+    except GenerationError as e:
+        return ChatMessage("assistant", str(e), error=True)
+    return ChatMessage("assistant", answer.text, sources=tuple(sources(answer.citations)))
+
+
+def show_message(message: ChatMessage) -> None:
+    """Draw one chat message, with its numbered sources under an answer."""
+    with st.chat_message(message.role):
+        if message.error:
+            st.error(message.text)
+            return
+        if message.role == "user":
+            st.markdown(escape_markdown(message.text))
+            return
+        # Claude's own formatting (bold, lists) is kept; only "$" is escaped, so prices
+        # aren't drawn as maths.
+        st.markdown(message.text.replace("$", r"\$"))
+        if message.sources:
+            st.caption("Sources")
+            st.markdown(
+                "\n".join(
+                    f"{number}. {escape_markdown(line)}"
+                    for number, line in enumerate(message.sources, start=1)
+                )
+            )
+
+
 def main() -> None:
     """Draw the page. Streamlit runs this top to bottom on every interaction."""
     load_dotenv()  # entry point only, never ragdog/core (Rule 8)
@@ -158,7 +211,19 @@ def main() -> None:
         upload_sidebar(collection)
         search_in = documents_sidebar(collection)  # after uploads, so new files are listed
 
-    st.chat_input("Ask a question about your documents", disabled=not key_set)
+    messages: list[ChatMessage] = st.session_state.setdefault("messages", [])
+    for message in messages:  # the page is redrawn from scratch on every rerun
+        show_message(message)
+
+    question = st.chat_input("Ask a question about your documents", disabled=not key_set)
+    if question and question.strip():
+        asked = ChatMessage("user", question)
+        messages.append(asked)
+        show_message(asked)
+        with st.spinner("Searching your documents and asking Claude…"):
+            reply = ask(question, search_in, collection)
+        messages.append(reply)
+        show_message(reply)
 
 
 if __name__ == "__main__":

@@ -9,8 +9,9 @@ from chromadb.api.models.Collection import Collection
 from streamlit.testing.v1 import AppTest
 
 import app
+import ragdog.core.generate
 import ragdog.core.ingest
-from ragdog.core.generate import Citation
+from ragdog.core.generate import Answer, Citation, GenerationError
 from ragdog.core.ingest import DocumentInfo, upsert_chunks
 from ragdog.core.retrieve import RetrievedChunk
 
@@ -210,3 +211,117 @@ def test_sources_same_quote_in_two_places_is_kept_twice() -> None:
     """A footer repeated on two pages is two sources, not one."""
     lines = app.sources([cite("Acme Ltd.", page=1), cite("Acme Ltd.", page=2)])
     assert len(lines) == 2
+
+
+# --- chat ---
+
+
+class FakeGenerate:
+    """Stands in for generate_answer: records each call and returns a canned answer.
+
+    The answer cites the first chunk twice, to check the sources are de-duplicated.
+    """
+
+    def __init__(self, text: str = "E2210 means the jar is not seated.", error: str = "") -> None:
+        self.text = text
+        self.error = error
+        self.calls: list[tuple[str, list[RetrievedChunk]]] = []
+
+    def __call__(self, question: str, chunks: list[RetrievedChunk]) -> Answer:
+        self.calls.append((question, chunks))
+        if self.error:
+            raise GenerationError(self.error)
+        citations = [Citation(chunks[0], chunks[0].text)] * 2 if chunks else []
+        return Answer(self.text, citations, input_tokens=100, output_tokens=20)
+
+
+@pytest.fixture
+def fake_generate(monkeypatch: pytest.MonkeyPatch) -> FakeGenerate:
+    """No API call: app.py imports generate_answer when it runs, so it gets this one."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    fake = FakeGenerate()
+    monkeypatch.setattr(ragdog.core.generate, "generate_answer", fake)
+    return fake
+
+
+def ask(at: AppTest, question: str) -> AppTest:
+    at.chat_input[0].set_value(question).run()
+    assert not at.exception
+    return at
+
+
+def store_two_documents(collection: Collection) -> None:
+    upsert_chunks(collection, [(3, 0, "Error E2210: jar not seated.")], "hash-a", "handbook.pdf")
+    upsert_chunks(collection, [(1, 0, "Lunch is at noon.")], "hash-b", "notes.txt")
+
+
+def test_question_gets_answer_and_sources(
+    fake_db: Collection, fake_generate: FakeGenerate
+) -> None:
+    upsert_chunks(fake_db, [(3, 0, "Error E2210: jar not seated.")], "hash-a", "handbook.pdf")
+    at = ask(run_app(), "What does E2210 mean?")
+    question, reply = at.chat_message
+    assert (question.name, question.markdown[0].value) == ("user", "What does E2210 mean?")
+    assert reply.name == "assistant"
+    assert reply.markdown[0].value == "E2210 means the jar is not seated."
+    assert reply.caption[0].value == "Sources"
+    assert reply.markdown[1].value == "1. handbook.pdf · p.3 — “Error E2210: jar not seated.”"
+
+
+def test_history_kept_between_questions(fake_db: Collection, fake_generate: FakeGenerate) -> None:
+    store_two_documents(fake_db)
+    at = ask(ask(run_app(), "First?"), "Second?")
+    assert [m.name for m in at.chat_message] == ["user", "assistant", "user", "assistant"]
+    assert [q for q, _ in fake_generate.calls] == ["First?", "Second?"]
+
+
+def test_search_in_one_document(fake_db: Collection, fake_generate: FakeGenerate) -> None:
+    store_two_documents(fake_db)
+    at = run_app()
+    at.sidebar.selectbox[0].select("notes.txt").run()
+    ask(at, "When is lunch?")
+    _, chunks = fake_generate.calls[-1]
+    assert {chunk.doc_hash for chunk in chunks} == {"hash-b"}
+
+
+def test_search_all_documents_by_default(fake_db: Collection, fake_generate: FakeGenerate) -> None:
+    store_two_documents(fake_db)
+    ask(run_app(), "Anything?")
+    _, chunks = fake_generate.calls[-1]
+    assert {chunk.doc_hash for chunk in chunks} == {"hash-a", "hash-b"}
+
+
+def test_no_documents_passes_no_chunks(fake_generate: FakeGenerate) -> None:
+    """generate_answer then gives its fixed "no documents" answer without calling the API."""
+    ask(run_app(), "Anything?")
+    assert fake_generate.calls == [("Anything?", [])]
+
+
+def test_generation_error_shown_and_app_keeps_working(
+    fake_db: Collection, fake_generate: FakeGenerate
+) -> None:
+    store_two_documents(fake_db)
+    fake_generate.error = "Claude API call failed: overloaded"
+    at = ask(run_app(), "First?")
+    assert at.chat_message[1].error[0].value == "Claude API call failed: overloaded"
+    fake_generate.error = ""
+    ask(at, "Second?")
+    assert at.chat_message[3].markdown[0].value == "E2210 means the jar is not seated."
+
+
+def test_blank_question_is_ignored(fake_generate: FakeGenerate) -> None:
+    at = ask(run_app(), "   ")
+    assert len(at.chat_message) == 0
+    assert fake_generate.calls == []
+
+
+def test_dollar_signs_are_not_maths(fake_db: Collection, fake_generate: FakeGenerate) -> None:
+    upsert_chunks(fake_db, [(2, 0, "Mini $59, Turbo $129.")], "hash-a", "price_list.pdf")
+    fake_generate.text = "The Mini is $59 and the Turbo is $129."
+    reply = ask(run_app(), "Prices?").chat_message[1]
+    assert reply.markdown[0].value == r"The Mini is \$59 and the Turbo is \$129."
+    assert reply.markdown[1].value == r"1. price\_list.pdf · p.2 — “Mini \$59, Turbo \$129.”"
+
+
+def test_escape_markdown() -> None:
+    assert app.escape_markdown("*a* _b_ $1 <x> [y] #z") == r"\*a\* \_b\_ \$1 \<x\> \[y\] \#z"
