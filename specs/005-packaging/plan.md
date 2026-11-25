@@ -6,7 +6,7 @@
 |---|---|
 | `Dockerfile` (new) | The image |
 | `.dockerignore` (new) | What never goes into the image |
-| `.streamlit/config.toml` (new) | Streamlit usage stats off, minimal toolbar |
+| `.streamlit/config.toml` (new) | Streamlit usage stats off, developer options hidden |
 | `ragdog/core/ingest.py` | `get_collection` turns Chroma telemetry off |
 | `Makefile` | `docker-build`, `docker-run` |
 | `README.md` | "Run with Docker" section |
@@ -119,7 +119,7 @@ call `get_collection(tmp_path)`, and check `anonymized_telemetry is False`.
 gatherUsageStats = false
 
 [client]
-toolbarMode = "minimal"
+toolbarMode = "viewer"
 ```
 
 Streamlit reads this from the folder it's started in, so `make run` and the container both

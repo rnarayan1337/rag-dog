@@ -1,0 +1,10 @@
+# Streamlit settings for rag-dog. Read from the folder `streamlit run` starts in,
+# so both `make run` and the Docker image use them.
+
+[browser]
+# Streamlit sends anonymous usage statistics unless this is off.
+gatherUsageStats = false
+
+[client]
+# Hide developer options such as "Deploy"; the ⋮ menu (rerun, settings) stays.
+toolbarMode = "viewer"

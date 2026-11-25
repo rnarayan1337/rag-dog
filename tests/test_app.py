@@ -1,5 +1,6 @@
 """UI tests for app.py, using Streamlit's AppTest. No model download, no network, no cost."""
 
+import tomllib
 from pathlib import Path
 
 import dotenv
@@ -325,3 +326,14 @@ def test_dollar_signs_are_not_maths(fake_db: Collection, fake_generate: FakeGene
 
 def test_escape_markdown() -> None:
     assert app.escape_markdown("*a* _b_ $1 <x> [y] #z") == r"\*a\* \_b\_ \$1 \<x\> \[y\] \#z"
+
+
+# --- Streamlit settings ---
+
+
+def test_streamlit_config_turns_usage_stats_off() -> None:
+    """Streamlit sends anonymous usage statistics unless told not to (005)."""
+    config_file = Path(APP).parent / ".streamlit" / "config.toml"
+    config = tomllib.loads(config_file.read_text(encoding="utf-8"))
+    assert config["browser"]["gatherUsageStats"] is False
+    assert config["client"]["toolbarMode"] == "viewer"

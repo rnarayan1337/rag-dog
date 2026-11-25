@@ -10,8 +10,8 @@ Tick each task when done. Keep this file current in the same PR as the code.
 ## Usage data off
 
 - [x] T3 Chroma: `get_collection` passes `Settings(anonymized_telemetry=False)` + test
-- [ ] T4 Streamlit: `.streamlit/config.toml` (`gatherUsageStats = false`,
-      `toolbarMode = "minimal"`) + test
+- [x] T4 Streamlit: `.streamlit/config.toml` (`gatherUsageStats = false`,
+      `toolbarMode = "viewer"`) + test
 
 ## Image
 

@@ -26,7 +26,7 @@ start the container again, my documents are still there.
   on the command line). Never in the image.
 - Usage data switched off:
   - Streamlit: a committed `.streamlit/config.toml` with `gatherUsageStats = false`. It also
-    sets `toolbarMode = "minimal"` to hide the "Deploy" button. Applies to `make run` too.
+    sets `toolbarMode = "viewer"` to hide the "Deploy" button. Applies to `make run` too.
   - Chroma: `get_collection` passes `Settings(anonymized_telemetry=False)`.
 - `make docker-build` and `make docker-run`.
 - A short **Run with Docker** section in `README.md`.
