@@ -15,7 +15,7 @@ Tick each task when done. Keep this file current in the same PR as the code.
 
 ## UI
 
-- [ ] T6 `app.py` skeleton: `load_dotenv`, page config, cached collection, `main()` guard,
+- [x] T6 `app.py` skeleton: `load_dotenv`, page config, cached collection, `main()` guard,
       missing-key warning + first `AppTest` (page loads; warning when no key)
 - [ ] T7 Upload flow (`ingest_upload`): temp file under the original name, duplicate check,
       "added / already uploaded / no text found / couldn't read", handled uploads remembered
