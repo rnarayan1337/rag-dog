@@ -23,4 +23,4 @@ docker-build:  ## Build the Docker image `rag-dog`
 	docker build -t rag-dog .
 
 docker-run:  ## Run the image on port 8501 (key from .env, documents in the ragdog-data volume)
-	docker run --rm -p 8501:8501 --env-file .env -v ragdog-data:/app/.ragdog_db rag-dog
+	docker run --rm -p 127.0.0.1:8501:8501 --env-file .env -v ragdog-data:/app/.ragdog_db rag-dog

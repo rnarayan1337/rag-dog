@@ -6,7 +6,7 @@
 |---|---|
 | `Dockerfile` (new) | The image |
 | `.dockerignore` (new) | What never goes into the image |
-| `.streamlit/config.toml` (new) | Streamlit usage stats off, developer options hidden |
+| `.streamlit/config.toml` (new) | Streamlit usage stats off, developer options hidden, local address only |
 | `ragdog/core/ingest.py` | `get_collection` turns Chroma telemetry off |
 | `Makefile` | `docker-build`, `docker-run` |
 | `README.md` | "Run with Docker" section |
@@ -127,7 +127,15 @@ gatherUsageStats = false
 
 [client]
 toolbarMode = "viewer"
+
+[server]
+address = "localhost"
 ```
+
+`address = "localhost"` (added after T11) stops other devices on the network from opening
+`make run` and asking questions on the owner's key. In the image, `--server.address=0.0.0.0`
+on the command line wins over the file, so the container still listens on all its interfaces;
+`-p 127.0.0.1:8501:8501` then publishes the port on this machine only.
 
 Streamlit reads this from the folder it's started in, so `make run` and the container both
 get it. Test: load it with `tomllib` and check both values.
@@ -139,7 +147,7 @@ docker-build:  ## Build the Docker image
 	docker build -t rag-dog .
 
 docker-run:  ## Run the image on port 8501 (key from .env, data in the ragdog-data volume)
-	docker run --rm -p 8501:8501 --env-file .env -v ragdog-data:/app/.ragdog_db rag-dog
+	docker run --rm -p 127.0.0.1:8501:8501 --env-file .env -v ragdog-data:/app/.ragdog_db rag-dog
 ```
 
 `--rm` removes the container when it stops. The data stays in the volume.
@@ -155,11 +163,12 @@ Then open http://localhost:8501. Without `make`:
 
 ```bash
 docker build -t rag-dog .
-docker run --rm -p 8501:8501 -e ANTHROPIC_API_KEY -v ragdog-data:/app/.ragdog_db rag-dog
+read -s ANTHROPIC_API_KEY && export ANTHROPIC_API_KEY
+docker run --rm -p 127.0.0.1:8501:8501 -e ANTHROPIC_API_KEY -v ragdog-data:/app/.ragdog_db rag-dog
 ```
 
-`-e ANTHROPIC_API_KEY` with no `=value` passes the key from your shell, so it isn't typed on
-the command line or saved in shell history. Documents live in the `ragdog-data` volume;
+`read -s` takes the key without showing it or saving it in shell history (an `export KEY=…`
+line would be saved). `-e ANTHROPIC_API_KEY` with no `=value` passes it from the shell. Documents live in the `ragdog-data` volume;
 `docker volume rm ragdog-data` deletes them.
 
 ## Verification

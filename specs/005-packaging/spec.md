@@ -27,6 +27,9 @@ start the container again, my documents are still there.
 - Usage data switched off:
   - Streamlit: a committed `.streamlit/config.toml` with `gatherUsageStats = false`. It also
     sets `toolbarMode = "viewer"` to hide the "Deploy" button. Applies to `make run` too.
+- Only this machine can reach the app, because anyone who can open it can ask questions on the
+  owner's key: `server.address = "localhost"` in `.streamlit/config.toml` for `make run`, and
+  `-p 127.0.0.1:8501:8501` for the container (inside it Streamlit listens on all interfaces).
   - Chroma: `get_collection` passes `Settings(anonymized_telemetry=False)`.
 - `make docker-build` and `make docker-run`.
 - A short **Run with Docker** section in `README.md`.
@@ -45,6 +48,7 @@ start the container again, my documents are still there.
 |---|---|
 | `make docker-build` | Builds the image `rag-dog` from `uv.lock`; the embedding model is inside it |
 | `make docker-run` with `.env` present | App at `http://localhost:8501`, database on the `ragdog-data` volume |
+| Another device on the network opens port 8501 | Can't connect (container and `make run`) |
 | Container removed and started again with the same volume | Same documents listed |
 | Started without a key | The 004 warning; chat box disabled; no crash |
 | First upload in a new container | No model download; embedding runs offline |
@@ -63,6 +67,8 @@ start the container again, my documents are still there.
 6. Started without a key, the page shows the warning and doesn't crash.
 7. Usage data is off: the Chroma setting is checked by a test, and the Streamlit setting is
    checked by a test reading `.streamlit/config.toml`.
+11. Only this machine can open the app: from the network, port 8501 refuses connections for
+    both `make docker-run` and `make run`. `server.address` is checked by a test.
 8. The key never appears in the image: not in its files, its environment (`docker inspect`) or
    its build history (`docker history`).
 9. Local development is unchanged: `make test` and `make run` still work.

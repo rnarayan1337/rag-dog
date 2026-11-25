@@ -84,12 +84,29 @@ Noticed:
 | 7 | Usage data off, checked by tests | ✅ `test_get_collection_turns_chroma_telemetry_off`, `test_streamlit_config_turns_usage_stats_off` |
 | 8 | Key not in files, environment or history | ✅ T8: 0 matches in 1,126 MB of image files, `docker image inspect`, `docker history --no-trunc` |
 | 9 | Local development unchanged | ✅ `make test`: 102 passed. `make run`: health check `ok`, page served |
-| 10 | README says how to build and run | ⏳ T11 |
+| 10 | README says how to build and run | ✅ T11: "Run with Docker" in `README.md` |
+| 11 | Only this machine can open the app | ✅ T11a: see below |
 
 Noticed while checking `make run`: without `~/.streamlit/credentials.toml`, Streamlit's first
 start asks for an email address in the terminal. It was like this before 005. In a terminal you
 press Enter once; without a terminal (this check) it quits, so the check ran with
 `STREAMLIT_SERVER_HEADLESS=true` instead of answering, which would have written that file.
+
+### Local only (T11a)
+
+2026-11-25. Health check (`/_stcore/health`) from `localhost` and from the Mac's network
+address (192.168.86.130). Connecting to its own network address is enough to show what the port
+is bound to.
+
+| Run | `localhost` | Network address |
+|---|---|---|
+| Before: `docker run -p 8501:8501` | ok | ok (anyone on the network) |
+| `make docker-run` (`-p 127.0.0.1:8501:8501`) | ok | refused |
+| `make run` (`server.address = "localhost"`) | ok | refused |
+
+With `server.address` set, `make run` prints only `URL: http://localhost:8501`: no Network or
+External URL, so it no longer asks an outside service for the public IP (the T9 note). The
+container still does, because inside it Streamlit listens on `0.0.0.0`.
 
 ## Verify
 
@@ -99,7 +116,10 @@ press Enter once; without a terminal (this check) it quits, so the check ran wit
 
 ## Docs
 
-- [ ] T11 `README.md`: "Run with Docker" section
+- [x] T11 `README.md`: "Run with Docker" section
+- [x] T11a Only this machine can reach the app (found while answering a question about
+      the key): `server.address = "localhost"` + test, `-p 127.0.0.1:…` in the Makefile, README
+      and Dockerfile comment; check from the network
 - [ ] T12 Draft decision 017 (Docker image, model baked in, named volume, telemetry off) and a
       dated note on 012 about `-e ANTHROPIC_API_KEY` without a value — approve the text first
 - [ ] T13 `docs/challenges.md`: add anything new

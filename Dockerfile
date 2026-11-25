@@ -1,7 +1,7 @@
 # rag-dog: Streamlit UI + ragdog.core, with the embedding model baked in.
 #
 #   docker build -t rag-dog .
-#   docker run --rm -p 8501:8501 -e ANTHROPIC_API_KEY -v ragdog-data:/app/.ragdog_db rag-dog
+#   docker run --rm -p 127.0.0.1:8501:8501 -e ANTHROPIC_API_KEY -v ragdog-data:/app/.ragdog_db rag-dog
 #
 # The API key is only ever passed at run time (Rule 8). See specs/005-packaging/plan.md.
 

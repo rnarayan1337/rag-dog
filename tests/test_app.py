@@ -331,9 +331,19 @@ def test_escape_markdown() -> None:
 # --- Streamlit settings ---
 
 
+def streamlit_config() -> dict:
+    """The committed `.streamlit/config.toml`, parsed."""
+    config_file = Path(APP).parent / ".streamlit" / "config.toml"
+    return tomllib.loads(config_file.read_text(encoding="utf-8"))
+
+
 def test_streamlit_config_turns_usage_stats_off() -> None:
     """Streamlit sends anonymous usage statistics unless told not to (005)."""
-    config_file = Path(APP).parent / ".streamlit" / "config.toml"
-    config = tomllib.loads(config_file.read_text(encoding="utf-8"))
+    config = streamlit_config()
     assert config["browser"]["gatherUsageStats"] is False
     assert config["client"]["toolbarMode"] == "viewer"
+
+
+def test_streamlit_config_listens_on_this_machine_only() -> None:
+    """`make run` isn't reachable from the network: others could spend the key (005)."""
+    assert streamlit_config()["server"]["address"] == "localhost"
