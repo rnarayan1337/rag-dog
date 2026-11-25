@@ -69,11 +69,33 @@ Noticed:
 - The no-key warning says "Add it to `.env`". In Docker the fix is `--env-file .env` or
   `-e ANTHROPIC_API_KEY`, which the README section (T11) should say.
 
+### Acceptance criteria (T10)
+
+2026-11-25.
+
+| # | Criterion | Evidence |
+|---|---|---|
+| 1 | Builds from a clean checkout, locked versions, size recorded | ✅ fresh `git clone` of the branch at `d57668c`, `docker build --no-cache`: 40 s, 1.58 GB; chromadb 1.5.9, streamlit 1.67.0, anthropic 2.12.0, pypdf 7.1.1. (`--no-cache` skips Docker's layer cache; uv's download cache mount is still reused, which only saves downloads) |
+| 2 | v1 goal: upload the handbook, cited answer with the right page | ✅ T9: E4012 answer citing `acme-handbook.pdf · p.3` |
+| 3 | Documents survive a new container on the same volume | ✅ T9: handbook still listed with 4 chunks |
+| 4 | No `.env`, database files, `tests/`, `.git/`; non-root | ✅ T8 (and the clean build): `/app` holds only the app; `.ragdog_db` empty; `uid=1000(ragdog)` |
+| 5 | Model in the image; first upload doesn't download it | ✅ T8: embedding works with `--network none`; T9: no download line on first upload |
+| 6 | No key: warning, no crash | ✅ T9: warning shown, chat box disabled |
+| 7 | Usage data off, checked by tests | ✅ `test_get_collection_turns_chroma_telemetry_off`, `test_streamlit_config_turns_usage_stats_off` |
+| 8 | Key not in files, environment or history | ✅ T8: 0 matches in 1,126 MB of image files, `docker image inspect`, `docker history --no-trunc` |
+| 9 | Local development unchanged | ✅ `make test`: 102 passed. `make run`: health check `ok`, page served |
+| 10 | README says how to build and run | ⏳ T11 |
+
+Noticed while checking `make run`: without `~/.streamlit/credentials.toml`, Streamlit's first
+start asks for an email address in the terminal. It was like this before 005. In a terminal you
+press Enter once; without a terminal (this check) it quits, so the check ran with
+`STREAMLIT_SERVER_HEADLESS=true` instead of answering, which would have written that file.
+
 ## Verify
 
 - [x] T9 Run it in the browser pane: upload the handbook, ask one question (ask the owner
       first — costs money), restart on the same volume, start without a key; record results
-- [ ] T10 Walk through the acceptance criteria and record the evidence
+- [x] T10 Walk through the acceptance criteria and record the evidence
 
 ## Docs
 
