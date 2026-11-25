@@ -49,9 +49,29 @@ to the unpacked files. Fixed with a BuildKit cache mount on both `uv sync` steps
 | Key in environment | ✅ none; env names are `PATH LANG GPG_KEY PYTHON_VERSION PYTHON_SHA256 UV_*` (`GPG_KEY` is the base image's Python signing key) |
 | Key anywhere | ✅ the real key (read from `.env` on the Mac, never printed or sent into a container) matched 0 times in the exported image files (1,126 MB), `docker history --no-trunc` and `docker image inspect` |
 
+### Browser run (T9)
+
+2026-11-25, browser pane, new `ragdog-data` volume. Containers started from `.claude/launch.json`
+(`make docker-run`, and `docker run` without `--env-file` for the no-key check).
+
+| Check | Result |
+|---|---|
+| Page served | ✅ `make docker-run` → `http://localhost:8501`, "No documents yet." |
+| Upload | ✅ `acme-handbook.pdf: added 4 chunks`; no model download in the container logs |
+| Question (paid, approved) | ✅ "What does error E4012 mean on the blender, and what should I do?" → motor overheated; unplug, cool 20 minutes, less food. Both sources cite `acme-handbook.pdf · p.3`, which is the right page |
+| Restart on the same volume | ✅ container removed by `--rm`, volume kept; new container lists `acme-handbook.pdf · 4 chunks` |
+| No key | ✅ warning shown, chat box disabled, no crash |
+
+Noticed:
+
+- On start-up Streamlit prints an "External URL" with the machine's public IP, which it looks up
+  from an outside service. `gatherUsageStats = false` doesn't cover it. Local runs do the same.
+- The no-key warning says "Add it to `.env`". In Docker the fix is `--env-file .env` or
+  `-e ANTHROPIC_API_KEY`, which the README section (T11) should say.
+
 ## Verify
 
-- [ ] T9 Run it in the browser pane: upload the handbook, ask one question (ask the owner
+- [x] T9 Run it in the browser pane: upload the handbook, ask one question (ask the owner
       first — costs money), restart on the same volume, start without a key; record results
 - [ ] T10 Walk through the acceptance criteria and record the evidence
 
