@@ -142,9 +142,14 @@ def upsert_chunks(
     doc_hash: str,
     path: str,
     batch_size: int = UPSERT_BATCH_SIZE,
+    file_location: str | None = None,
 ) -> int:
-    """Embed and store chunks with their ids and metadata; return how many were stored."""
+    """Embed and store chunks with their ids and metadata; return how many were stored.
+
+    file_location is stored instead of path when given (an upload's temp path is deleted).
+    """
     filename = Path(path).name
+    location = file_location or path
     for start in range(0, len(chunks), batch_size):
         batch = chunks[start : start + batch_size]
         collection.upsert(
@@ -154,7 +159,7 @@ def upsert_chunks(
                 {
                     "doc_hash": doc_hash,
                     "filename": filename,
-                    "file_location": path,
+                    "file_location": location,
                     "chunk_index": index,
                     "page": page,
                     "embedding_model": EMBEDDING_MODEL,
@@ -165,8 +170,15 @@ def upsert_chunks(
     return len(chunks)
 
 
-def ingest_file(path: str, collection: Collection | None = None) -> int:
-    """Hash, read, chunk, and store a file; return chunks stored (0 if already ingested)."""
+def ingest_file(
+    path: str,
+    collection: Collection | None = None,
+    file_location: str | None = None,
+) -> int:
+    """Hash, read, chunk, and store a file; return chunks stored (0 if already ingested).
+
+    file_location overrides what's recorded as the file's location (default: path).
+    """
     if collection is None:
         collection = get_collection()
     doc_hash = hash_file(path)
@@ -174,4 +186,4 @@ def ingest_file(path: str, collection: Collection | None = None) -> int:
         return 0
     pages = read_document(path)
     chunks = chunk_pages(pages)
-    return upsert_chunks(collection, chunks, doc_hash, path)
+    return upsert_chunks(collection, chunks, doc_hash, path, file_location=file_location)

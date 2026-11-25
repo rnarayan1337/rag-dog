@@ -171,6 +171,13 @@ def test_upsert_chunks_stores_ids_text_and_metadata(fake_collection: Collection)
     ]
 
 
+def test_upsert_chunks_file_location_overrides_path(fake_collection: Collection) -> None:
+    upsert_chunks(fake_collection, CHUNKS, "abc", "/tmp/xyz/report.pdf", file_location="report.pdf")
+    stored = fake_collection.get(include=["metadatas"])
+    assert {meta["file_location"] for meta in stored["metadatas"]} == {"report.pdf"}
+    assert {meta["filename"] for meta in stored["metadatas"]} == {"report.pdf"}
+
+
 def test_upsert_chunks_twice_does_not_duplicate(fake_collection: Collection) -> None:
     upsert_chunks(fake_collection, CHUNKS, "abc", "report.pdf")
     upsert_chunks(fake_collection, CHUNKS, "abc", "report.pdf")
@@ -222,3 +229,15 @@ def test_ingest_file_unsupported_type_stores_nothing(fake_collection: Collection
     with pytest.raises(ValueError, match="Unsupported file type"):
         ingest_file(str(path), fake_collection)
     assert fake_collection.count() == 0
+
+
+def test_ingest_file_records_file_location_not_temp_path(
+    fake_collection: Collection, tmp_path: Path
+) -> None:
+    """What the UI does: ingest a temp copy, record the uploaded file's name."""
+    temp_copy = tmp_path / "notes.md"
+    temp_copy.write_text(make_text(paragraphs=4, sentences=12), encoding="utf-8")
+    assert ingest_file(str(temp_copy), fake_collection, file_location="notes.md") > 1
+    stored = fake_collection.get(include=["metadatas"])
+    assert {meta["file_location"] for meta in stored["metadatas"]} == {"notes.md"}
+    assert {meta["filename"] for meta in stored["metadatas"]} == {"notes.md"}
