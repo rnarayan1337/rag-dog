@@ -11,6 +11,9 @@ PROVIDER_SDKS: frozenset[str] = frozenset({"anthropic", "openai", "litellm"})
 # The one module allowed to import them (Rule 7).
 LLM_MODULE = ROOT / "ragdog" / "core" / "generate.py"
 
+# UI and HTTP frameworks that ragdog/core must never import (Rule 1, decision 007).
+UI_HTTP_PACKAGES: frozenset[str] = frozenset({"streamlit", "fastapi"})
+
 
 def app_sources() -> list[Path]:
     """Every Python file that ships or runs the app: ragdog/, scripts/, app.py. Not tests."""
@@ -49,3 +52,24 @@ def test_generate_is_scanned_and_does_import_anthropic() -> None:
     """Guards the test above: if the scan found no files, it would pass for the wrong reason."""
     assert LLM_MODULE in app_sources()
     assert "anthropic" in imported_packages(LLM_MODULE)
+
+
+def core_sources() -> list[Path]:
+    """Every Python file in ragdog/core."""
+    return sorted(ROOT.glob("ragdog/core/**/*.py"))
+
+
+def test_core_imports_no_ui_or_http_framework() -> None:
+    """Rule 1: ragdog/core stays UI-free, so a FastAPI layer can sit on it later."""
+    offenders = {
+        str(path.relative_to(ROOT)): sorted(imported_packages(path) & UI_HTTP_PACKAGES)
+        for path in core_sources()
+        if imported_packages(path) & UI_HTTP_PACKAGES
+    }
+    assert offenders == {}
+
+
+def test_core_is_scanned() -> None:
+    """Guards the test above: it must actually look at the core modules."""
+    names = {path.name for path in core_sources()}
+    assert {"ingest.py", "retrieve.py", "generate.py"} <= names

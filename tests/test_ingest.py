@@ -10,11 +10,13 @@ from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
 from ragdog.core.config import CHUNK_OVERLAP, CHUNK_SIZE, COLLECTION, EMBEDDING_MODEL
 from ragdog.core.ingest import (
     HASH_BLOCK_SIZE,
+    DocumentInfo,
     already_ingested,
     chunk_pages,
     get_collection,
     hash_file,
     ingest_file,
+    list_documents,
     read_document,
     split_text,
     upsert_chunks,
@@ -171,6 +173,13 @@ def test_upsert_chunks_stores_ids_text_and_metadata(fake_collection: Collection)
     ]
 
 
+def test_upsert_chunks_file_location_overrides_path(fake_collection: Collection) -> None:
+    upsert_chunks(fake_collection, CHUNKS, "abc", "/tmp/xyz/report.pdf", file_location="report.pdf")
+    stored = fake_collection.get(include=["metadatas"])
+    assert {meta["file_location"] for meta in stored["metadatas"]} == {"report.pdf"}
+    assert {meta["filename"] for meta in stored["metadatas"]} == {"report.pdf"}
+
+
 def test_upsert_chunks_twice_does_not_duplicate(fake_collection: Collection) -> None:
     upsert_chunks(fake_collection, CHUNKS, "abc", "report.pdf")
     upsert_chunks(fake_collection, CHUNKS, "abc", "report.pdf")
@@ -222,3 +231,38 @@ def test_ingest_file_unsupported_type_stores_nothing(fake_collection: Collection
     with pytest.raises(ValueError, match="Unsupported file type"):
         ingest_file(str(path), fake_collection)
     assert fake_collection.count() == 0
+
+
+def test_ingest_file_records_file_location_not_temp_path(
+    fake_collection: Collection, tmp_path: Path
+) -> None:
+    """What the UI does: ingest a temp copy, record the uploaded file's name."""
+    temp_copy = tmp_path / "notes.md"
+    temp_copy.write_text(make_text(paragraphs=4, sentences=12), encoding="utf-8")
+    assert ingest_file(str(temp_copy), fake_collection, file_location="notes.md") > 1
+    stored = fake_collection.get(include=["metadatas"])
+    assert {meta["file_location"] for meta in stored["metadatas"]} == {"notes.md"}
+    assert {meta["filename"] for meta in stored["metadatas"]} == {"notes.md"}
+
+
+def test_list_documents_empty_collection(fake_collection: Collection) -> None:
+    assert list_documents(fake_collection) == []
+
+
+def test_list_documents_one_entry_per_document_sorted(fake_collection: Collection) -> None:
+    upsert_chunks(fake_collection, CHUNKS, "h1", "zebra.pdf")
+    upsert_chunks(fake_collection, CHUNKS[:1], "h2", "apple.txt")
+    assert list_documents(fake_collection) == [
+        DocumentInfo(filename="apple.txt", doc_hash="h2", chunks=1),
+        DocumentInfo(filename="zebra.pdf", doc_hash="h1", chunks=3),
+    ]
+
+
+def test_list_documents_same_filename_different_content(fake_collection: Collection) -> None:
+    """Two versions of one file are two documents (decision 006); hash breaks the tie."""
+    upsert_chunks(fake_collection, CHUNKS, "bbb", "report.pdf")
+    upsert_chunks(fake_collection, CHUNKS[:2], "aaa", "report.pdf")
+    assert [(d.doc_hash, d.chunks) for d in list_documents(fake_collection)] == [
+        ("aaa", 2),
+        ("bbb", 3),
+    ]

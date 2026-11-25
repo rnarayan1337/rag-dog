@@ -6,6 +6,51 @@ wrong along the way. Newest first within each roadmap item.
 
 Status: ✅ resolved · 🟨 worked around · 🔴 open
 
+## 004 — Upload UI
+
+### Every click would ingest the uploads again ✅
+*2026-11-24*
+
+- **Symptom (found in planning):** Streamlit reruns the whole script on every click, and the
+  file uploader keeps its files across reruns. Ingesting whatever is in the uploader would
+  run again on each click, and dedup would then print "already uploaded" for a file that was
+  just added.
+- **Resolution:** Each file's status is kept in `st.session_state`, keyed by Streamlit's
+  `file_id`, and a file is only ingested the first time it's seen. A test reruns the page
+  with the file still in the uploader and checks nothing changes. Confirmed in the browser in
+  T11.
+- **Lesson:** In Streamlit, anything with a side effect must remember that it already ran.
+
+### `$` in answers would be drawn as maths ✅
+*2026-11-24*
+
+- **Symptom (found in planning):** Streamlit's markdown treats text between two `$` signs as a
+  formula, so "$59 and $129" would be drawn as maths. `*` and `_` in a quote or filename
+  would turn into italics.
+- **Resolution:** Source lines and the user's question are fully escaped. Claude's answer
+  only has `$` escaped, so its own bold and lists still render. Tested, and seen correctly in
+  the browser ("sells for $59").
+
+### Tests would have loaded the real `.env` ✅
+*2026-11-24*
+
+- **Symptom:** `app.py` calls `load_dotenv()`, and `.env` holds the real key. In tests, that
+  would put the key into the test process and make the missing-key test fail.
+- **Resolution:** `load_dotenv()` runs inside `main()`, not at import, so `import app` has no
+  side effects. An autouse fixture replaces `dotenv.load_dotenv` with a no-op, so each test
+  sets the environment itself.
+
+### Test setup quirks in Streamlit ✅
+*2026-11-24*
+
+- `AppTest` doesn't expose a `disabled` property on the chat input; the tests read
+  `chat_input[0].proto.disabled`.
+- `st.cache_resource` is shared by every `AppTest` in the process, so one test's collection
+  would leak into the next. A fixture clears it before each test.
+- `AppTest` runs `app.py` fresh each time, so monkeypatching `ragdog.core.generate.generate_answer`
+  or `ragdog.core.ingest.get_collection` before `run()` is enough; the script's
+  `from … import` picks up the fake.
+
 ## 003 — Generation
 
 ### Answers repeat the fact they cite 🔴
@@ -20,8 +65,9 @@ Status: ✅ resolved · 🟨 worked around · 🔴 open
 - **Tried:** A prompt line ("State each fact once, in your own words. Don't repeat the source
   text after it; citations are attached automatically."). Still 5/9 repeat. No real change,
   so the line was removed.
-- **Next:** Compare models and effort levels (roadmap 012). In the 004 UI, consider showing
-  cited blocks as quotes rather than inline text.
+- **Next:** Compare models and effort levels (roadmap 012).
+- **004 (2026-11-24):** The UI lists the quotes separately under "Sources", so the evidence
+  is clear, but the answer text still repeats itself (seen again in T11 for E2210).
 - **Lesson:** With citations on, the answer is split into blocks; inspect the raw blocks
   before blaming the code that joins them. Output also varies run to run, so one run can't
   prove a fix.
@@ -116,14 +162,34 @@ Status: ✅ resolved · 🟨 worked around · 🔴 open
 - A custom embedding function without `get_config` / `build_from_config` triggers a
   `DeprecationWarning`. The fake one in `tests/conftest.py` defines both.
 
-### Duplicate and empty files both return 0 🔴
-*2026-11-22*
+### Duplicate and empty files both return 0 ✅
+*2026-11-22 · resolved 2026-11-24*
 
 - **Symptom:** `ingest_file` returns `0` both for a file already stored and for a file with no
   extractable text (e.g. a scanned PDF), so the caller can't tell them apart.
-- **Next:** Decide in 004, when the UI needs to show the right message.
+- **Resolution (004):** The UI calls `already_ingested` first and says "already uploaded". By
+  the time `ingest_file` returns 0, the file can't be a duplicate, so it says "no text found".
+  `ingest_file` is unchanged (decision 016). Seen in the browser in T11.
 
 ## Process
+
+### `awk` counted bytes, so the wrong line was edited ✅
+*2026-11-24*
+
+- **Symptom:** A line-length check flagged a test line as over 100 characters, and a `sed`
+  edit replaced it with a function signature, breaking the test file.
+- **Cause:** `awk length` counts bytes. The line had `·` and curly quotes, which take several
+  bytes each, so it was really under 100 characters. The long line was a different one.
+- **Resolution:** Restored the line, fixed the real one, and now check lengths in Python
+  (characters, not bytes). The tests caught the break straight away.
+
+### Test files in a hidden folder ✅
+*2026-11-24*
+
+- **Symptom:** For the T11 browser run, the upload files were in a hidden temporary folder
+  that's awkward to reach from a file dialog.
+- **Resolution:** Copied them to `~/Downloads/rag-dog-t11/`. Files a person has to pick go
+  somewhere they can find.
 
 ### A commit made on an old copy undid earlier changes ✅
 *2026-11-22*

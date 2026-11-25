@@ -173,3 +173,54 @@ Add a new entry whenever a decision is made or changed — in the same PR as the
 - **Revisit when:** Roadmap 012 compares models (switch with `LLM_MODEL`, and add the
   fallback if leaving Haiku), the 004 UI needs streaming, or 006's golden set shows wrong
   answers.
+
+## 016 — UI: one Streamlit page, uploads through a temp file
+*2026-11-24*
+
+- **Decision:** `app.py` is one Streamlit page that calls `ragdog/core` directly (decision 007).
+  - The sidebar has an uploader (PDF, Markdown and text, several files at once) with one
+    status line per file, the list of stored documents, and a "Search in" choice.
+  - The main area is a chat. Its history lasts for the browser session only, and each question
+    is answered on its own.
+  - Each upload is written to a temp folder under its original name, ingested with
+    `file_location` set to that name, and then deleted.
+  - The UI checks `already_ingested` before calling `ingest_file`, so a 0 from `ingest_file`
+    can only mean "no text found".
+  - Answers aren't streamed.
+  - The collection and its embedding model are opened once with `st.cache_resource`.
+- **Changes decision 005:** for uploads, `file_location` holds the uploaded file's name, not a
+  path on disk. Scripts still store the path. Nothing reads the field today, and chunk text is
+  stored, so re-embedding doesn't need the file.
+- **Why:**
+  - **Temp file:** `ingest_file` takes a path, and naming the temp file after the original
+    keeps `filename` correct without changing `core`.
+  - **Duplicate check in the UI:** "already uploaded" and "no text found" are told apart
+    without changing `ingest_file`'s return value.
+  - **No streaming:** answers are 50–180 tokens and arrive in a second or two. Streaming would
+    need a second function that calls the LLM (against Rule 7), and citations would arrive in
+    pieces.
+  - **Cache:** Streamlit reruns the whole script on every click, and without the cache each
+    rerun would reload the model.
+- **Trade-off:**
+  - No copy of an uploaded file is kept, so re-parsing it (with a better PDF reader, say)
+    means uploading it again.
+  - The answer appears all at once.
+  - Chat history is lost on reload, and there are no follow-up questions.
+  - The upload flow has one broad `except`, so one bad file doesn't stop the rest.
+- **Considered:**
+  - Keeping copies under `.ragdog_db/uploads/`: re-parsing would be possible, but it takes
+    more disk and keeps more copies of user documents.
+  - Making `ingest_file` return a status instead of 0: a change to the core API for one
+    caller.
+  - Streaming the answer.
+- **Measured (2026-11-24):** In the browser, on a fresh database:
+  - The handbook gave "added 4 chunks", a renamed copy "already uploaded", and an empty file
+    "no text found".
+  - The stored chunks have `acme-handbook.pdf` in both `filename` and `file_location`.
+  - 3 questions were answered correctly with the expected pages, for about $0.001.
+- **Revisit when:**
+  - Answers get long enough that waiting feels slow (streaming).
+  - Follow-up questions are wanted (send history to `generate_answer`).
+  - Roadmap 009's API also takes uploads: move the duplicate / no-text check into `core` so
+    the two clients don't each have a copy.
+  - Roadmap 010 needs the original files.

@@ -2,6 +2,8 @@
 
 import hashlib
 import unicodedata
+from collections import Counter
+from dataclasses import dataclass
 from pathlib import Path
 
 import chromadb
@@ -46,6 +48,30 @@ def already_ingested(collection: Collection, doc_hash: str) -> bool:
     """Return True if any chunk from the document with this hash is stored."""
     found = collection.get(where={"doc_hash": doc_hash}, limit=1, include=[])
     return len(found["ids"]) > 0
+
+
+@dataclass(frozen=True)
+class DocumentInfo:
+    """One stored document, as the UI lists it."""
+
+    filename: str
+    doc_hash: str
+    chunks: int
+
+
+def list_documents(collection: Collection | None = None) -> list[DocumentInfo]:
+    """Return one entry per stored document, read from chunk metadata, sorted by filename."""
+    if collection is None:
+        collection = get_collection()
+    metadatas = collection.get(include=["metadatas"])["metadatas"] or []
+    counts: Counter[str] = Counter()
+    filenames: dict[str, str] = {}
+    for meta in metadatas:
+        doc_hash = str(meta["doc_hash"])
+        counts[doc_hash] += 1
+        filenames[doc_hash] = str(meta["filename"])
+    documents = [DocumentInfo(filenames[h], h, n) for h, n in counts.items()]
+    return sorted(documents, key=lambda d: (d.filename, d.doc_hash))
 
 
 def read_text(path: str) -> list[tuple[int, str]]:
@@ -142,9 +168,14 @@ def upsert_chunks(
     doc_hash: str,
     path: str,
     batch_size: int = UPSERT_BATCH_SIZE,
+    file_location: str | None = None,
 ) -> int:
-    """Embed and store chunks with their ids and metadata; return how many were stored."""
+    """Embed and store chunks with their ids and metadata; return how many were stored.
+
+    file_location is stored instead of path when given (an upload's temp path is deleted).
+    """
     filename = Path(path).name
+    location = file_location or path
     for start in range(0, len(chunks), batch_size):
         batch = chunks[start : start + batch_size]
         collection.upsert(
@@ -154,7 +185,7 @@ def upsert_chunks(
                 {
                     "doc_hash": doc_hash,
                     "filename": filename,
-                    "file_location": path,
+                    "file_location": location,
                     "chunk_index": index,
                     "page": page,
                     "embedding_model": EMBEDDING_MODEL,
@@ -165,8 +196,15 @@ def upsert_chunks(
     return len(chunks)
 
 
-def ingest_file(path: str, collection: Collection | None = None) -> int:
-    """Hash, read, chunk, and store a file; return chunks stored (0 if already ingested)."""
+def ingest_file(
+    path: str,
+    collection: Collection | None = None,
+    file_location: str | None = None,
+) -> int:
+    """Hash, read, chunk, and store a file; return chunks stored (0 if already ingested).
+
+    file_location overrides what's recorded as the file's location (default: path).
+    """
     if collection is None:
         collection = get_collection()
     doc_hash = hash_file(path)
@@ -174,4 +212,4 @@ def ingest_file(path: str, collection: Collection | None = None) -> int:
         return 0
     pages = read_document(path)
     chunks = chunk_pages(pages)
-    return upsert_chunks(collection, chunks, doc_hash, path)
+    return upsert_chunks(collection, chunks, doc_hash, path, file_location=file_location)
