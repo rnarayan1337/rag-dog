@@ -10,7 +10,7 @@ Tick each task when done. Keep this file current in the same PR as the code.
 ## Core
 
 - [x] T3 `file_location` argument on `ingest_file` / `upsert_chunks` + tests
-- [ ] T4 `DocumentInfo` and `list_documents()` + tests
+- [x] T4 `DocumentInfo` and `list_documents()` + tests
 - [ ] T5 Rule 1 test: nothing in `ragdog/core` imports `streamlit` or `fastapi`
 
 ## UI

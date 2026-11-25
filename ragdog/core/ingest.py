@@ -2,6 +2,8 @@
 
 import hashlib
 import unicodedata
+from collections import Counter
+from dataclasses import dataclass
 from pathlib import Path
 
 import chromadb
@@ -46,6 +48,30 @@ def already_ingested(collection: Collection, doc_hash: str) -> bool:
     """Return True if any chunk from the document with this hash is stored."""
     found = collection.get(where={"doc_hash": doc_hash}, limit=1, include=[])
     return len(found["ids"]) > 0
+
+
+@dataclass(frozen=True)
+class DocumentInfo:
+    """One stored document, as the UI lists it."""
+
+    filename: str
+    doc_hash: str
+    chunks: int
+
+
+def list_documents(collection: Collection | None = None) -> list[DocumentInfo]:
+    """Return one entry per stored document, read from chunk metadata, sorted by filename."""
+    if collection is None:
+        collection = get_collection()
+    metadatas = collection.get(include=["metadatas"])["metadatas"] or []
+    counts: Counter[str] = Counter()
+    filenames: dict[str, str] = {}
+    for meta in metadatas:
+        doc_hash = str(meta["doc_hash"])
+        counts[doc_hash] += 1
+        filenames[doc_hash] = str(meta["filename"])
+    documents = [DocumentInfo(filenames[h], h, n) for h, n in counts.items()]
+    return sorted(documents, key=lambda d: (d.filename, d.doc_hash))
 
 
 def read_text(path: str) -> list[tuple[int, str]]:
