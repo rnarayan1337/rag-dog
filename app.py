@@ -5,6 +5,7 @@ Run with `make run` (uv run streamlit run app.py). It calls ragdog.core directly
 
 import os
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 import streamlit as st
@@ -12,10 +13,18 @@ from chromadb.api.models.Collection import Collection
 from dotenv import load_dotenv
 
 from ragdog.core.config import SUPPORTED_EXTENSIONS
-from ragdog.core.ingest import already_ingested, get_collection, hash_file, ingest_file
+from ragdog.core.ingest import (
+    DocumentInfo,
+    already_ingested,
+    get_collection,
+    hash_file,
+    ingest_file,
+    list_documents,
+)
 
 ASSETS = Path(__file__).resolve().parent / "assets"
 UPLOAD_TYPES = sorted(ext.lstrip(".") for ext in SUPPORTED_EXTENSIONS)  # ["md", "pdf", "txt"]
+ALL_DOCUMENTS = "All documents"
 NO_KEY_WARNING = (
     "`ANTHROPIC_API_KEY` is not set, so questions can't be answered. "
     "Add it to `.env` and restart the app."
@@ -31,6 +40,11 @@ def open_collection() -> Collection:
 def has_api_key() -> bool:
     """True if the key is in the environment. The key itself is never read or shown here."""
     return bool(os.environ.get("ANTHROPIC_API_KEY"))
+
+
+def chunk_count(n: int) -> str:
+    """Say "1 chunk" or "4 chunks"."""
+    return f"{n} chunk{'' if n == 1 else 's'}"
 
 
 def ingest_upload(name: str, data: bytes, collection: Collection) -> str:
@@ -52,7 +66,7 @@ def ingest_upload(name: str, data: bytes, collection: Collection) -> str:
             return f"❌ {filename}: couldn't read it ({e})"
     if added == 0:
         return f"⚠️ {filename}: no text found (is it a scanned PDF?)"
-    return f"✅ {filename}: added {added} chunk{'' if added == 1 else 's'}"
+    return f"✅ {filename}: added {chunk_count(added)}"
 
 
 def upload_sidebar(collection: Collection) -> None:
@@ -74,6 +88,42 @@ def upload_sidebar(collection: Collection) -> None:
         st.markdown(statuses[upload.file_id])
 
 
+def document_labels(documents: list[DocumentInfo]) -> dict[str, str | None]:
+    """Map each label to the doc_hash it stands for; "All documents" maps to None.
+
+    Two documents with the same filename (e.g. an edited report.pdf) get the start of
+    their hash added, so the labels stay unique.
+    """
+    repeated = Counter(doc.filename for doc in documents)
+    labels: dict[str, str | None] = {ALL_DOCUMENTS: None}
+    for doc in documents:
+        label = doc.filename
+        if repeated[doc.filename] > 1:
+            label = f"{doc.filename} ({doc.doc_hash[:8]})"
+        labels[label] = doc.doc_hash
+    return labels
+
+
+def documents_sidebar(collection: Collection) -> str | None:
+    """List the stored documents and return the doc_hash to search (None = all of them)."""
+    st.subheader("Stored")
+    documents = list_documents(collection)
+    if not documents:
+        st.caption("No documents yet.")
+        return None
+    labels = document_labels(documents)
+    chunks = {doc.doc_hash: doc.chunks for doc in documents}
+    st.markdown(
+        "\n".join(
+            f"- {label} · {chunk_count(chunks[doc_hash])}"
+            for label, doc_hash in labels.items()
+            if doc_hash is not None
+        )
+    )
+    choice = st.selectbox("Search in", list(labels))
+    return labels[choice]
+
+
 def main() -> None:
     """Draw the page. Streamlit runs this top to bottom on every interaction."""
     load_dotenv()  # entry point only, never ragdog/core (Rule 8)
@@ -90,6 +140,7 @@ def main() -> None:
     with st.sidebar:
         st.header("Documents")
         upload_sidebar(collection)
+        search_in = documents_sidebar(collection)  # after uploads, so new files are listed
 
     st.chat_input("Ask a question about your documents", disabled=not key_set)
 

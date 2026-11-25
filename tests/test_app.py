@@ -10,6 +10,7 @@ from streamlit.testing.v1 import AppTest
 
 import app
 import ragdog.core.ingest
+from ragdog.core.ingest import DocumentInfo, upsert_chunks
 
 APP = str(Path(__file__).resolve().parent.parent / "app.py")
 TEXT = b"Error E2210 means the jar is not seated correctly. Lift the jar and seat it again."
@@ -45,11 +46,15 @@ def upload(at: AppTest, *files: tuple[str, bytes]) -> list[str]:
     at.sidebar.file_uploader[0].set_value([(name, data, "text/plain") for name, data in files])
     at.run()
     assert not at.exception
-    return sidebar_lines(at)
+    return status_lines(at)
 
 
-def sidebar_lines(at: AppTest) -> list[str]:
-    return [element.value for element in at.sidebar.markdown]
+STATUS_ICONS = ("✅", "↩️", "⚠️", "❌")
+
+
+def status_lines(at: AppTest) -> list[str]:
+    """The uploader's per-file lines (the document list is markdown too, so filter by icon)."""
+    return [md.value for md in at.sidebar.markdown if md.value.startswith(STATUS_ICONS)]
 
 
 # --- page ---
@@ -118,5 +123,51 @@ def test_rerun_does_not_ingest_again(fake_db: Collection) -> None:
     at = run_app()
     first = upload(at, ("handbook.txt", TEXT))
     at.run()
-    assert sidebar_lines(at) == first == ["✅ handbook.txt: added 1 chunk"]
+    assert status_lines(at) == first == ["✅ handbook.txt: added 1 chunk"]
     assert fake_db.count() == 1
+
+
+# --- document list and "Search in" ---
+
+
+def test_document_labels_unique_filenames() -> None:
+    documents = [DocumentInfo("a.pdf", "1111aaaa", 3), DocumentInfo("b.txt", "2222bbbb", 1)]
+    assert app.document_labels(documents) == {
+        "All documents": None,
+        "a.pdf": "1111aaaa",
+        "b.txt": "2222bbbb",
+    }
+
+
+def test_document_labels_same_filename_adds_hash() -> None:
+    documents = [
+        DocumentInfo("report.pdf", "aaaa1111ffff", 3),
+        DocumentInfo("report.pdf", "bbbb2222ffff", 4),
+    ]
+    assert list(app.document_labels(documents)) == [
+        "All documents",
+        "report.pdf (aaaa1111)",
+        "report.pdf (bbbb2222)",
+    ]
+
+
+def test_no_documents_yet() -> None:
+    at = run_app()
+    assert at.sidebar.caption[-1].value == "No documents yet."
+    assert len(at.sidebar.selectbox) == 0
+
+
+def test_stored_documents_listed_on_first_visit(fake_db: Collection) -> None:
+    """The list is read from the database, so it survives a restart (criterion 2)."""
+    upsert_chunks(fake_db, [(1, 0, "One."), (2, 1, "Two.")], "hash-a", "manual.pdf")
+    at = run_app()
+    assert at.sidebar.markdown[-1].value == "- manual.pdf · 2 chunks"
+    assert at.sidebar.selectbox[0].options == ["All documents", "manual.pdf"]
+    assert at.sidebar.selectbox[0].value == "All documents"
+
+
+def test_upload_appears_in_list_straight_away() -> None:
+    at = run_app()
+    upload(at, ("handbook.txt", TEXT))
+    assert at.sidebar.markdown[-1].value == "- handbook.txt · 1 chunk"
+    assert at.sidebar.selectbox[0].options == ["All documents", "handbook.txt"]

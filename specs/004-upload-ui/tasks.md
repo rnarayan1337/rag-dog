@@ -20,7 +20,7 @@ Tick each task when done. Keep this file current in the same PR as the code.
 - [x] T7 Upload flow (`ingest_upload`): temp file under the original name, duplicate check,
       "added / already uploaded / no text found / couldn't read", handled uploads remembered
       across reruns + `AppTest` tests
-- [ ] T8 Document list and "Search in" choice
+- [x] T8 Document list and "Search in" choice
 - [ ] T9 `sources()` formatting (collapse whitespace, drop duplicates) + tests
 - [ ] T10 Chat: history in `st.session_state`, `retrieve` → `generate_answer` with a spinner,
       `GenerationError` shown as an error + `AppTest` tests with a fake `generate_answer`
