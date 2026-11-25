@@ -15,7 +15,7 @@ Tick each task when done. Keep this file current in the same PR as the code.
 
 ## Image
 
-- [ ] T5 `.dockerignore`
+- [x] T5 `.dockerignore`
 - [ ] T6 `Dockerfile`
 - [ ] T7 `make docker-build` / `make docker-run`
 - [ ] T8 Build it: record the image size; check contents, non-root user, model in the image,
