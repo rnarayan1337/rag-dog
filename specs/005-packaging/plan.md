@@ -32,21 +32,24 @@ WORKDIR /app
 
 # 1. Dependencies only: this layer is rebuilt only when uv.lock changes
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
 
 # 2. The app itself
 COPY README.md app.py ./
 COPY ragdog/ ragdog/
 COPY assets/ assets/
 COPY .streamlit/ .streamlit/
-RUN uv sync --frozen --no-dev \
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev \
     && mkdir .ragdog_db && chown ragdog:ragdog .ragdog_db
 
 USER ragdog
 
 # 3. Download the embedding model now, into /home/ragdog/.cache/chroma
 RUN python -c "from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2; \
-ONNXMiniLM_L6_V2()(['warm up'])"
+ONNXMiniLM_L6_V2()(['warm up'])" \
+    && rm /home/ragdog/.cache/chroma/onnx_models/all-MiniLM-L6-v2/onnx.tar.gz
 
 EXPOSE 8501
 CMD ["streamlit", "run", "app.py", \
@@ -60,6 +63,10 @@ Why each part:
 - **Two `uv sync` steps:** the first installs only the dependencies, so editing `app.py`
   rebuilds in seconds instead of reinstalling chromadb. `--frozen` means exactly what's in
   `uv.lock`, and the build fails if the lock is out of date. `--no-dev` leaves out pytest.
+- **Cache mount on `uv sync` (added in T8):** without it, uv's download cache (689 MB) was
+  saved into the image. The mount keeps the cache on the build machine, so rebuilds stay fast.
+- **The model archive is deleted (added in T8):** Chroma only checks the six unpacked files,
+  so the 83 MB `onnx.tar.gz` isn't needed after unpacking.
 - **`README.md` is copied:** `pyproject.toml` names it as the readme, and the build backend
   needs it to install the project.
 - **`PATH` with `.venv/bin`:** `streamlit` runs straight from the environment. `uv run` at

@@ -23,15 +23,18 @@ WORKDIR /app
 
 # 1. Dependencies only, exactly as locked, without dev tools. This layer is rebuilt only when
 #    pyproject.toml or uv.lock changes, so editing app code rebuilds in seconds.
+#    uv's download cache lives in a build cache mount: reused between builds, never in the image.
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
 
 # 2. The app. README.md is needed because pyproject.toml names it as the readme.
 COPY README.md app.py ./
 COPY ragdog/ ragdog/
 COPY assets/ assets/
 COPY .streamlit/ .streamlit/
-RUN uv sync --frozen --no-dev \
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev \
     && mkdir .ragdog_db \
     && chown ragdog:ragdog .ragdog_db
 
@@ -40,9 +43,11 @@ RUN uv sync --frozen --no-dev \
 USER ragdog
 
 # 3. Download the embedding model now (into /home/ragdog/.cache/chroma), so a new container
-#    never downloads it on its first upload.
+#    never downloads it on its first upload. Chroma only checks the unpacked files, so the
+#    downloaded archive is deleted.
 RUN python -c "from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2; \
-ONNXMiniLM_L6_V2()(['warm up'])"
+ONNXMiniLM_L6_V2()(['warm up'])" \
+    && rm /home/ragdog/.cache/chroma/onnx_models/all-MiniLM-L6-v2/onnx.tar.gz
 
 EXPOSE 8501
 
