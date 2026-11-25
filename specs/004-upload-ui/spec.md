@@ -1,6 +1,6 @@
 # 004 — Upload UI: Spec
 
-**Status:** Draft · **Roadmap:** 004 · **Decisions:** 005, 006, 007, 008, 012, 015, 016
+**Status:** Done · **Roadmap:** 004 · **Decisions:** 005, 006, 007, 008, 012, 015, 016
 
 ## Goal
 
