@@ -75,7 +75,7 @@ Checked 2026-11-24. 100 tests pass (`make test`).
 
 ## Docs
 
-- [ ] T13 Draft decision 016 (UI: Streamlit page, temp-file uploads, `file_location` holds the
+- [x] T13 Draft decision 016 (UI: Streamlit page, temp-file uploads, `file_location` holds the
       original filename, no streaming) — approve the text before adding it
 - [ ] T14 `docs/challenges.md`: close the "duplicate vs no text" item; add anything new
 - [ ] T15 Mark 004 done in `spec.md` and `docs/roadmap.md`
