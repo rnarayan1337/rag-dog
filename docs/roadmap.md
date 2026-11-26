@@ -14,9 +14,12 @@ Status: ⬜ not started · 🟨 in progress · ✅ done · 🅿️ parked
 | 002 | Retrieval | Embed the question, return top-k chunks; check them by eye | ✅ |
 | 003 | Generation | Prompt + chunks → Claude → cited answer | ✅ |
 | 004 | Upload UI | Streamlit page to upload files and chat | ✅ |
-| 005 | Packaging | Docker image, volume mount for the DB, API key at run time | 🟨 |
+| 005 | Packaging | Docker image, volume mount for the DB, API key at run time | ✅ |
 
 **v1 is done when:** someone can `docker run` rag-dog, upload a PDF, and get a cited answer.
+
+✅ **v1 done (2026-11-25):** in the browser, a container from `make docker-run` answered a
+question about the uploaded handbook, citing the right page (`specs/005-packaging/tasks.md`, T9).
 
 ## After v1
 
