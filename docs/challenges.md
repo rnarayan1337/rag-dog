@@ -6,6 +6,66 @@ wrong along the way. Newest first within each roadmap item.
 
 Status: ✅ resolved · 🟨 worked around · 🔴 open
 
+## 005 — Packaging
+
+### The app was open to the whole network ✅
+*2026-11-25*
+
+- **Symptom (found while answering "is the key safe?"):** `docker run -p 8501:8501` publishes
+  the port on every network the Mac is on. From the Mac's own network address the health check
+  answered `ok`, so anyone on the same Wi-Fi could have opened the app, asked questions charged
+  to the key, and read the uploaded documents. `make run` was the same: its log showed a
+  "Network URL".
+- **Cause:** Both Docker's `-p` and Streamlit listen on all interfaces unless told otherwise.
+  Inside the container that's required, or the published port can't reach Streamlit.
+- **Resolution:** `-p 127.0.0.1:8501:8501` for the container, and `server.address =
+  "localhost"` in `.streamlit/config.toml` for `make run` (the image's command line overrides
+  it). The network address now refuses connections for both; a test checks the config line
+  (decision 017).
+- **Lesson:** The key never left the machine, but the app that spends it was reachable. Ask
+  who can *use* a secret, not only who can *read* it.
+
+### Streamlit looks up the public IP at start-up 🟨
+*2026-11-25*
+
+- **Symptom:** The container's log printed an "External URL" with the Mac's public IP.
+- **Cause:** When Streamlit listens on all interfaces, it asks an outside service for the
+  public IP so it can print that URL. `gatherUsageStats = false` doesn't cover it.
+- **Resolution:** Gone for `make run` since `server.address = "localhost"`. The container
+  still does it, because it listens on `0.0.0.0` inside. Accepted for v1 (decision 017).
+
+### `make run` quits without a terminal 🟨
+*2026-11-25*
+
+- **Symptom:** Started from a script, `make run` exited at once with `Error 255`.
+- **Cause:** Without `~/.streamlit/credentials.toml`, Streamlit's first start asks for an
+  email address. With no terminal to answer, it reads end-of-input and quits. Not new in 005.
+- **Resolution:** In a terminal you press Enter once. For automated checks,
+  `STREAMLIT_SERVER_HEADLESS=true` skips the question without writing that file.
+
+### The image was 2.66 GB ✅
+*2026-11-24*
+
+- **Symptom:** The first build was 2.66 GB, much more than the dependencies explained.
+- **Cause:** `docker history` and `du` inside the image showed two things that shouldn't be
+  there: uv's download cache (689 MB in `/root/.cache/uv`), saved into the dependency layer,
+  and the model's 83 MB download archive, kept next to the unpacked files.
+- **Resolution:** A BuildKit cache mount on both `uv sync` steps keeps uv's cache on the build
+  machine (rebuilds stay fast), and the Dockerfile deletes `onnx.tar.gz` after unpacking, after
+  checking Chroma's code only looks for the unpacked files. 1.58 GB now; the rest is locked
+  dependencies.
+- **Lesson:** Look at what each layer holds, not just the total. Caches written during a
+  `RUN` step end up in the image.
+
+### `toolbarMode = "minimal"` hid the ⋮ menu too ✅
+*2026-11-24*
+
+- **Symptom:** The plan used `minimal` to hide the "Deploy" button, but in the browser the ⋮
+  menu (rerun, settings) had gone as well.
+- **Resolution:** `toolbarMode = "viewer"` hides developer options such as Deploy and keeps
+  the menu. Spec, plan and test updated.
+- **Lesson:** Check a UI setting in the browser, not just from its name.
+
 ## 004 — Upload UI
 
 ### Every click would ingest the uploads again ✅
@@ -172,6 +232,16 @@ Status: ✅ resolved · 🟨 worked around · 🔴 open
   `ingest_file` is unchanged (decision 016). Seen in the browser in T11.
 
 ## Process
+
+### Docker installed, but not found ✅
+*2026-11-24*
+
+- **Symptom:** After Docker Desktop was installed, `docker` was "command not found" in the
+  agent's shell.
+- **Cause:** Docker Desktop puts the CLI in `~/.docker/bin` and adds it to `PATH` for new
+  shells; the agent's shell had started before the install.
+- **Resolution:** Commands put `~/.docker/bin` on `PATH` first. A new terminal finds it on
+  its own.
 
 ### `awk` counted bytes, so the wrong line was edited ✅
 *2026-11-24*

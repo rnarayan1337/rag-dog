@@ -122,5 +122,5 @@ container still does, because inside it Streamlit listens on `0.0.0.0`.
       and Dockerfile comment; check from the network
 - [x] T12 Draft decision 017 (Docker image, model baked in, named volume, telemetry off) and a
       dated note on 012 about `-e ANTHROPIC_API_KEY` without a value — approve the text first
-- [ ] T13 `docs/challenges.md`: add anything new
+- [x] T13 `docs/challenges.md`: add anything new
 - [ ] T14 Mark 005 done in `spec.md` and `docs/roadmap.md` (v1 done)
