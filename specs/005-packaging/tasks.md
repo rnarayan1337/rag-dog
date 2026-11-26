@@ -120,7 +120,7 @@ container still does, because inside it Streamlit listens on `0.0.0.0`.
 - [x] T11a Only this machine can reach the app (found while answering a question about
       the key): `server.address = "localhost"` + test, `-p 127.0.0.1:…` in the Makefile, README
       and Dockerfile comment; check from the network
-- [ ] T12 Draft decision 017 (Docker image, model baked in, named volume, telemetry off) and a
+- [x] T12 Draft decision 017 (Docker image, model baked in, named volume, telemetry off) and a
       dated note on 012 about `-e ANTHROPIC_API_KEY` without a value — approve the text first
 - [ ] T13 `docs/challenges.md`: add anything new
 - [ ] T14 Mark 005 done in `spec.md` and `docs/roadmap.md` (v1 done)

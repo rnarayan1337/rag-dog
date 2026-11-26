@@ -1,6 +1,6 @@
 # 005 — Packaging: Spec
 
-**Status:** Draft · **Roadmap:** 005 · **Decisions:** 002, 003, 010, 012, 016
+**Status:** Draft · **Roadmap:** 005 · **Decisions:** 002, 003, 010, 012, 016, 017
 
 ## Goal
 
