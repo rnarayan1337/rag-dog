@@ -1,0 +1,17 @@
+# Streamlit settings for rag-dog. Read from the folder `streamlit run` starts in,
+# so both `make run` and the Docker image use them.
+
+[server]
+# Only this machine can open the app. Anyone else who could reach it could ask questions
+# charged to your API key. The Docker image overrides this on its command line, because
+# inside a container the app must listen on all interfaces; `docker run -p 127.0.0.1:…`
+# limits it to this machine there instead.
+address = "localhost"
+
+[browser]
+# Streamlit sends anonymous usage statistics unless this is off.
+gatherUsageStats = false
+
+[client]
+# Hide developer options such as "Deploy"; the ⋮ menu (rerun, settings) stays.
+toolbarMode = "viewer"

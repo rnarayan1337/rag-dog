@@ -3,8 +3,11 @@
 import hashlib
 from pathlib import Path
 
+import chromadb
 import pytest
+from chromadb.api import ClientAPI
 from chromadb.api.models.Collection import Collection
+from chromadb.config import Settings
 from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
 
 from ragdog.core.config import CHUNK_OVERLAP, CHUNK_SIZE, COLLECTION, EMBEDDING_MODEL
@@ -56,6 +59,23 @@ def test_get_collection_uses_cosine_and_configured_model(tmp_path: Path) -> None
 def test_get_collection_persists_across_clients(tmp_path: Path) -> None:
     get_collection(str(tmp_path)).add(ids=["x"], documents=["hi"], embeddings=[[0.0] * 384])
     assert get_collection(str(tmp_path)).count() == 1
+
+
+def test_get_collection_turns_chroma_telemetry_off(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Chroma sends anonymous usage data unless told not to (005)."""
+    seen: list[Settings | None] = []
+    real_client = chromadb.PersistentClient
+
+    def spy(path: str, settings: Settings | None = None) -> ClientAPI:
+        seen.append(settings)
+        return real_client(path=path, settings=settings)
+
+    monkeypatch.setattr(chromadb, "PersistentClient", spy)
+    get_collection(str(tmp_path))
+    assert len(seen) == 1 and seen[0] is not None
+    assert seen[0].anonymized_telemetry is False
 
 
 def test_already_ingested_true_only_for_stored_hash(tmp_path: Path) -> None:

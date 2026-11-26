@@ -1,0 +1,22 @@
+# Kept out of the Docker build context: never sent to Docker, so never in the image.
+
+# Secrets and local data (Rule 2, Rule 8)
+.env
+.envrc
+.streamlit/secrets.toml
+.ragdog_db/
+
+# Local environments and tooling
+.venv/
+.git/
+.claude/
+**/__pycache__/
+.pytest_cache/
+
+# Not needed to run the app
+tests/
+scripts/
+specs/
+docs/
+AGENTS.md
+CLAUDE.md

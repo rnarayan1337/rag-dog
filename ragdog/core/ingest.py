@@ -8,6 +8,7 @@ from pathlib import Path
 
 import chromadb
 from chromadb.api.models.Collection import Collection
+from chromadb.config import Settings
 from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
 from pypdf import PdfReader
 
@@ -35,8 +36,13 @@ def hash_file(path: str) -> str:
 
 
 def get_collection(db_dir: str = DB_DIR) -> Collection:
-    """Open (or create) the persistent chunk collection, using cosine distance."""
-    client = chromadb.PersistentClient(path=db_dir)
+    """Open (or create) the persistent chunk collection, using cosine distance.
+
+    Chroma's anonymous usage telemetry is on by default; it's switched off here.
+    """
+    client = chromadb.PersistentClient(
+        path=db_dir, settings=Settings(anonymized_telemetry=False)
+    )
     return client.get_or_create_collection(
         name=COLLECTION,
         configuration={"hnsw": {"space": "cosine"}},  # fixed at creation

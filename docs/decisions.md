@@ -115,6 +115,11 @@ Add a new entry whenever a decision is made or changed — in the same PR as the
 - **Why:** Simple and keeps keys out of code and the image.
 - **Considered:** A key field in the UI — friendlier for a demo, but if hosted for others their
   keys would pass through our server. Listed as an idea in the roadmap.
+- **Note (2026-11-25, 005):** For Docker, pass the key with `--env-file .env`
+  (`make docker-run`), or with `-e ANTHROPIC_API_KEY` and no value after `read -s`.
+  `-e ANTHROPIC_API_KEY=...` would leave the key in shell history and show it in the process
+  list. Anyone who can open the app can spend the key, so the app only accepts connections from
+  the machine it runs on (decision 017).
 
 ## 013 — Text extraction cleanup
 *2026-11-22*
@@ -224,3 +229,62 @@ Add a new entry whenever a decision is made or changed — in the same PR as the
   - Roadmap 009's API also takes uploads: move the duplicate / no-text check into `core` so
     the two clients don't each have a copy.
   - Roadmap 010 needs the original files.
+
+## 017 — Packaging: a local Docker image, model inside, data on a volume
+*2026-11-25*
+
+- **Decision:** rag-dog ships as a Docker image that people build and run on their own machine.
+  - `python:3.12-slim`, with dependencies installed by `uv` from `uv.lock` (`--frozen`,
+    `--no-dev`) in two steps: dependencies first, then the app.
+  - The embedding model is downloaded during the build, so a container never downloads it.
+  - The app runs as a non-root user, `ragdog`.
+  - The database lives on a named volume, `ragdog-data`, mounted at `/app/.ragdog_db`.
+  - The key is passed only when the container starts (decision 012).
+  - Usage data is off: Chroma's `anonymized_telemetry=False` in `get_collection`, and
+    Streamlit's `gatherUsageStats = false` in a committed `.streamlit/config.toml`, which also
+    hides the "Deploy" button.
+  - Only the machine running the app can open it: `server.address = "localhost"` for
+    `make run`, and `-p 127.0.0.1:8501:8501` for the container.
+- **Why:**
+  - **Docker:** one way to run rag-dog without installing Python or uv, which is the
+    roadmap's v1 goal.
+  - **Slim, not Alpine:** onnxruntime has no wheels for Alpine's C library.
+  - **Two `uv sync` steps:** editing app code rebuilds in seconds instead of reinstalling
+    chromadb.
+  - **Model in the image:** the first upload works offline and doesn't wait for an 80 MB
+    download.
+  - **Named volume:** documents survive removing the container, and Docker gives the new
+    volume the owner of the image's folder, so the non-root user can write to it.
+  - **Local only:** anyone who can open the app can ask questions charged to the owner's key
+    and read the uploaded documents.
+- **Trade-off:**
+  - The image is 1.58 GB, 904 MB of it locked dependencies (pyarrow, kubernetes and pandas
+    come in through Streamlit and chromadb).
+  - It's built for the machine that builds it (arm64 here), and isn't published.
+  - While a container runs, `docker inspect` shows the key to anyone who can use Docker on that
+    machine.
+  - Inside the container Streamlit listens on all interfaces, so it still asks an outside
+    service for the public IP at start-up.
+- **Considered:**
+  - Alpine: smaller, but onnxruntime won't install.
+  - Downloading the model on first use: a smaller image, but the first upload needs network
+    access and is slow.
+  - A bind mount of the project's `.ragdog_db/`: ties the container to a host folder, and file
+    ownership differs between the Mac user and `ragdog`.
+  - A multi-stage build without uv in the final image: saves 36 MB, but adds a stage to
+    explain.
+  - docker compose, a health check, and HTTPS: not needed to run one container locally.
+- **Measured (2026-11-25):**
+  - From a clean clone, the build took 40 s and the image is 1.58 GB. Before two build fixes
+    it was 2.66 GB: uv's download cache (689 MB) and the model's archive (83 MB) were being
+    saved into it.
+  - The key matched 0 times in the image's files, environment and history, and in the volume.
+  - In the browser, the handbook question was answered citing the right page (p.3), and the
+    documents survived a new container.
+  - From the network, port 8501 refuses connections.
+- **Revisit when:**
+  - The image is published (roadmap): build it for several platforms and push it to a
+    registry.
+  - rag-dog is hosted for other people: it would need sign-in, and decision 012's concern
+    applies.
+  - The image size matters: replace or trim a dependency.
